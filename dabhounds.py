@@ -34,7 +34,7 @@ def show_main_menu():
     print(ASCII_ART)
     print("""
 Developed By: sherlockholmesat221b (sherlockholmesat221b@proton.me)
-Special Thanks To: superadmin0, uimaxbai, joehacks, and kobayashi.
+Special Thanks To: superadmin0, uimaxbai, joehacks, and Squid.WTF.
 
 Available Commands:
 
