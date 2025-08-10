@@ -1,0 +1,5 @@
+requests
+spotipy
+yt-dlp
+musicbrainzngs
+rapidfuzz
