@@ -15,7 +15,7 @@ It supports multiple matching modes to optimize accuracy and lets you authentica
 - Login and logout management for DAB and Spotify  
 - Customizable fuzzy matching threshold  
 - Shows credits and version info  
-- Update check feature (currently not implemented)  
+- Update check feature
 
 ---
 
