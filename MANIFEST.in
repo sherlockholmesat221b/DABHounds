@@ -1,0 +1,6 @@
+include README.md
+include LICENSE
+include VERSION
+
+recursive-include dabhounds *.py
+recursive-include dabhounds/core *.py

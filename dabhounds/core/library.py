@@ -1,8 +1,9 @@
-# core/library.py
+# dabhounds/core/library.py
 
 import requests
 from typing import List
-from core.auth import ensure_logged_in, load_config, get_authenticated_session   
+
+from dabhounds.core.auth import ensure_logged_in, load_config, get_authenticated_session   
 
 CONFIG = load_config()
 API_BASE = CONFIG["DAB_API_BASE"]

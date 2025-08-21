@@ -1,4 +1,4 @@
-# core/qobuz.py
+#dabhounds/ core/qobuz.py
 
 import requests
 

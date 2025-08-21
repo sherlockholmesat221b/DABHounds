@@ -1,9 +1,0 @@
-{
-    "SPOTIPY_CLIENT_ID": "440ca0fe7cc54e91af9b50972e783552",
-    "SPOTIPY_CLIENT_SECRET": "45737683ac27405580188fc7b009ea06",
-    "SPOTIPY_REDIRECT_URI": "http://127.0.0.1:8888/callback",
-    "DAB_API_BASE": "https://dab.yeet.su/api",
-    "MATCH_MODE": "linient",
-    "FUZZY_THRESHOLD": 80,
-    "SPOTIFY_TOKEN_INFO": null
-}

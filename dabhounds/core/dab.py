@@ -1,11 +1,12 @@
-# core/dab.py
+# dabhounds/core/dab.py
 
 import requests
 from typing import Optional, List, Dict
 from rapidfuzz import fuzz
-from core.auth import load_config
-from core.qobuz import get_qobuz_ids_for_isrc
-from core.musicbrainz import resolve_track_metadata
+
+from dabhounds.core.auth import load_config
+from dabhounds.core.qobuz import get_qobuz_ids_for_isrc
+from dabhounds.core.musicbrainz import resolve_track_metadata
 
 CONFIG = load_config()
 API_BASE = CONFIG["DAB_API_BASE"]

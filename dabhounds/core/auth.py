@@ -1,32 +1,43 @@
-# core/auth.py  
+# dabhounds/core/auth.py  
   
 import requests  
 import json  
 import os  
-  
-CONFIG_PATH = "config.json"  
-USER_AGENT = (  
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "  
-    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/1337.0.0.0 Safari/537.36"  
-)  
-  
-def load_config():  
-    if not os.path.exists(CONFIG_PATH):  
-        return {}  
-    try:  
-        with open(CONFIG_PATH, "r") as f:  
-            return json.load(f)  
-    except Exception as e:  
-        print(f"[DABHound] Failed to read config.json: {e}")  
-        return {}  
-  
-def save_config(config):  
-    try:  
-        with open(CONFIG_PATH, "w") as f:  
-            json.dump(config, f, indent=4)  
-        print("[DABHound] Config saved.")  
-    except Exception as e:  
-        print(f"[DABHound] Failed to save config.json: {e}")  
+from pathlib import Path
+
+MASTER_CONFIG = {
+    "SPOTIPY_CLIENT_ID": "440ca0fe7cc54e91af9b50972e783552",
+    "SPOTIPY_CLIENT_SECRET": "45737683ac27405580188fc7b009ea06",
+    "SPOTIPY_REDIRECT_URI": "http://127.0.0.1:8888/callback",
+    "DAB_API_BASE": "https://dab.yeet.su/api",
+    "MATCH_MODE": "lenient",
+    "FUZZY_THRESHOLD": 80,
+    "SPOTIFY_TOKEN_INFO": None
+}
+
+CONFIG_DIR = Path.home() / ".dabhound"
+CONFIG_FILE = CONFIG_DIR / "config.json"
+USER_AGENT = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/1337.0.0.0 Safari/537.36"
+)
+def ensure_config():
+    """Create config.json in user folder if missing, return loaded config."""
+    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    if not CONFIG_FILE.exists():
+        with CONFIG_FILE.open("w", encoding="utf-8") as f:
+            json.dump(MASTER_CONFIG, f, indent=2)
+        print(f"[DABHound] Generated default config at {CONFIG_FILE}")
+    with CONFIG_FILE.open("r", encoding="utf-8") as f:
+        return json.load(f)
+
+def load_config():
+    return ensure_config()
+
+def save_config(cfg: dict):
+    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    with CONFIG_FILE.open("w", encoding="utf-8") as f:
+        json.dump(cfg, f, indent=2)
   
 def verify_token(token: str) -> bool:  
     headers = {  

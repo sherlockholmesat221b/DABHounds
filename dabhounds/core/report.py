@@ -1,5 +1,13 @@
+# dabhounds/core/report.py
+
 from typing import List, Dict
 from datetime import datetime
+from pathlib import Path
+
+# Define user config/report directory
+CONFIG_DIR = Path.home() / ".dabhound"
+REPORT_DIR = CONFIG_DIR / "reports"
+REPORT_DIR.mkdir(parents=True, exist_ok=True)  # Create if missing
 
 def generate_report(input_tracks: List[Dict], matched_tracks: List[Dict], match_results: List[Dict], mode: str, library_name: str, library_id: str):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
@@ -23,9 +31,11 @@ def generate_report(input_tracks: List[Dict], matched_tracks: List[Dict], match_
 
         lines.append("")
 
+    # Make filename safe
     safe_library_name = library_name.replace(" ", "_").replace(":", "-")
-    report_path = f"report_{safe_library_name}.txt"
-    with open(report_path, "w", encoding="utf-8") as f:
+    report_path = REPORT_DIR / f"report_{safe_library_name}.txt"
+
+    with report_path.open("w", encoding="utf-8") as f:
         f.write("\n".join(lines))
 
     print(f"[DABHound] Saved match report to {report_path}")
