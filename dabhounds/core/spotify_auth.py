@@ -1,4 +1,4 @@
-#core/spotify_auth.py 
+# dabhounds/core/spotify_auth.py 
 
 import os  
 import json  
@@ -28,9 +28,9 @@ def save_config(config: dict, path=CONFIG_PATH):
 def get_spotify_auth_manager():  
     config = load_config()  
   
-    client_id = config.get("SPOTIPY_CLIENT_ID") or "440ca0fe7cc54e91af9b50972e783552"  
-    client_secret = config.get("SPOTIPY_CLIENT_SECRET") or "45737683ac27405580188fc7b009ea06"  
-    redirect_uri = config.get("SPOTIPY_REDIRECT_URI") or "http://127.0.0.1:8888/callback"  
+    client_id = config.get("SPOTIPY_CLIENT_ID") 
+    client_secret = config.get("SPOTIPY_CLIENT_SECRET")  
+    redirect_uri = config.get("SPOTIPY_REDIRECT_URI")  
   
     auth_manager = SpotifyOAuth(  
         client_id=client_id,  

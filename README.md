@@ -21,122 +21,123 @@ It supports multiple matching modes to optimize accuracy and lets you authentica
 
 ## 📥 Installation
 
-Clone and install dependencies:
+### Install via PyPI:
 
 ```bash
-git clone https://github.com/sherlockholmesat221b/dabhounds.git
-cd dabhounds
-pip install -r requirements.txt
-````
-
-Run the tool using Python 3.7+:
-
-```bash
-python dabhounds.py <link> [--mode strict|lenient|manual]
+pip install dabhounds
 ```
 
 ---
 
 ## 💡 Usage
 
-### Basic Conversion
+Once installed, the dabhounds command is available globally:
 
-Convert a Spotify or YouTube link to a DAB library:
+### Show Version
 
 ```bash
-python dabhounds.py <spotify_or_youtube_link>
+dabhounds --version
 ```
+
+
+### Show Help
+```bash
+dabhounds --help
+```
+
+
+### Convert a Spotify or YouTube Link
+
+```bash
+dabhounds <spotify_or_youtube_link>
+```
+
 
 ### Select Matching Mode
 
-Specify the matching mode (`strict`, `lenient`, or `manual`):
-
 ```bash
-python dabhounds.py <link> --mode lenient
+dabhounds <link> --mode lenient
 ```
+
 
 ### Authenticate with DAB
 
-Login to your DAB account for access to protected libraries and to enable library creation:
-
 ```bash
-python dabhounds.py --login
+dabhounds --login
 ```
+
 
 ### Authenticate with Spotify (OAuth)
-
-Login to Spotify for access to private playlists. Spotify login is optional and only required for private playlists. Other Spotify or YouTube inputs do not require Spotify login:
-
 ```bash
-python dabhounds.py --spotify-login
+dabhounds --spotify-login
 ```
+**Note**: For Spotify OAuth to work, you will have to contact the owner.
+
 
 ### Logout
 
-Logout from both DAB and Spotify accounts:
-
 ```bash
-python dabhounds.py --logout
+dabhounds --logout
 ```
+
 
 ### Adjust Fuzzy Match Threshold
 
-Override the default fuzzy search threshold (0-100):
-
 ```bash
-python dabhounds.py <link> --threshold 85
+dabhounds <link> --threshold 85
 ```
 
-### Display Credits and Version
 
-Show acknowledgements or version information:
+### Display Credits
 
 ```bash
-python dabhounds.py --credits
-python dabhounds.py --version
+dabhounds --credits
 ```
+
 
 ### Check for Updates
 
-Check if a new version is available:
-
 ```bash
-python dabhounds.py --update
+dabhounds --update
 ```
+
 
 ---
 
 ## ⚙️ Command-Line Options
 
-| Option                           | Description                                    |
-| -------------------------------- | ---------------------------------------------- |
-| `<link>`                         | Spotify, YouTube URL, or ISRC input            |
-| `--mode {strict,lenient,manual}` | Choose matching mode (default: lenient)        |
-| `--login`                        | Log in to DAB (required for library creation)  |
-| `--logout`                       | Log out from DAB and Spotify                   |
-| `--spotify-login`                | Authenticate with Spotify via OAuth (optional) |
-| `--threshold <0-100>`            | Set fuzzy search match threshold percentage    |
-| `--version`                      | Show current version                           |
-| `--credits`                      | Show tool credits and acknowledgements         |
-| `--update`                       | Check for updates                              |
+| Option                        | Description                                    |
+|-------------------------------|-----------------------------------------------|
+| `<link>`                       | Spotify, YouTube URL, or ISRC input           |
+| `--mode {strict,lenient,manual}` | Choose matching mode (default: lenient)       |
+| `--login`                       | Log in to DAB (required for library creation) |
+| `--logout`                      | Log out from DAB and Spotify                  |
+| `--spotify-login`               | Authenticate with Spotify via OAuth (optional)|
+| `--threshold <0-100>`           | Set fuzzy search match threshold percentage  |
+| `--version`                     | Show current version                           |
+| `--credits`                     | Show tool credits and acknowledgements       |
+| `--update`                      | Check for updates                              |
+
 
 ---
 
 ## 🧩 Dependencies
 
 - Python 3.7 or higher
-- Required Python packages (install via `requirements.txt`):
-    - `requests
-    - `spotipy`
-    - `yt-dlp`
-    - `musicbrainzngs`
-    - `rapidfuzz`
+- Installed automatically via pip:
+  - requests
+  - spotipy
+  - yt-dlp
+  - musicbrainzngs
+  - rapidfuzz
+
 
 ---
 
 ## 🌐 About DABMusic
 
-[DABMusic](https://dab.yeet.su) is a community-driven, open-source digital music library and streaming platform focused on high-quality, unrestricted music access.
+[DABMusic](https://dab.yeet.su) is a community-driven, digital music streaming platform focused on high-quality, unrestricted music access.
+
 
 ---
 

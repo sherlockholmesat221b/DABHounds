@@ -7,20 +7,20 @@ import requests
 import shutil
 import tempfile
 import zipfile
+from pathlib import Path
 
 from spotipy import Spotify
 from spotipy.oauth2 import SpotifyClientCredentials
-from core.spotify import SpotifyFetcher
-from core.youtube import YouTubeFetcher
-from core.dab import match_track
-from core.library import create_library, add_tracks_to_library
-from core.report import generate_report
-from core.auth import login, ensure_logged_in, load_config, save_config
-from core.spotify_auth import get_spotify_client
+from dabhounds.core.spotify import SpotifyFetcher
+from dabhounds.core.youtube_parser_v3 import YouTubeParserV3
+from dabhounds.core.dab import match_track
+from dabhounds.core.library import create_library, add_tracks_to_library
+from dabhounds.core.report import generate_report
+from dabhounds.core.auth import login, ensure_logged_in, load_config, save_config
+from dabhounds.core.spotify_auth import get_spotify_client
 
-
-CONFIG_PATH = "config.json"
-
+# Load user config (will auto-create ~/.dabhound/config.json if missing)
+config = load_config()
 ASCII_ART = r"""
   _____          ____  _    _                       _     
  |  __ \   /\   |  _ \| |  | |                     | |    
@@ -209,7 +209,7 @@ def main():
 
 
     if args.logout:
-        from core.spotify_auth import spotify_logout
+        from dabhounds.core.spotify_auth import spotify_logout
         logout()
         spotify_logout()
         sys.exit(0)
@@ -259,9 +259,9 @@ def main():
 
     elif is_youtube_url(args.link):
         print("[DABHound] Detected YouTube link.")
-        fetcher = YouTubeFetcher()
+        parser = YouTubeParserV3(config=config.get("YOUTUBE", {}))
         print("[DABHound] Fetching YouTube metadata...")
-        tracks = fetcher.extract_tracks(args.link)
+        tracks = parser.parse(args.link)
 
         for t in tracks:
             if "safe_title" in t:

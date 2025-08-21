@@ -1,4 +1,4 @@
-# core/musicbrainz.py
+# dabhounds/core/musicbrainz.py
 
 import musicbrainzngs
 
