@@ -15,7 +15,14 @@ API_BASE = CONFIG["DAB_API_BASE"]
 def search_dab(query: str, token) -> List[Dict]:
     headers = {
         "Authorization": f"Bearer {token}",
-        "User-Agent": "Mozilla/5.0"
+        "User-Agent": CONFIG.get(
+            "USER_AGENT",
+            (
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/1337.0.0.0 Safari/537.36"
+            )
+        ),
     }
     resp = requests.get(f"{API_BASE}/search", params={"q": query, "type": "track"}, headers=headers)
     if not resp.ok:
