@@ -19,7 +19,8 @@ CONFIG_DIR = Path.home() / ".dabhound"
 CONFIG_FILE = CONFIG_DIR / "config.json"
 USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/1337.0.0.0 Safari/537.36"
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/1337.0.0.0 Safari/537.36"
 )
 def ensure_config():
     """Create config.json in user folder if missing, return loaded config."""
