@@ -8,6 +8,7 @@ import shutil
 import tempfile
 import zipfile
 from pathlib import Path
+import subprocess
 
 from spotipy import Spotify
 from spotipy.oauth2 import SpotifyClientCredentials
@@ -38,28 +39,28 @@ Special Thanks To: superadmin0, uimaxbai, joehacks, and Squid.WTF.
 
 Available Commands:
 
-  dabhounds.py <link> [--mode strict|lenient|manual]
+  dabhounds <link> [--mode strict|lenient|manual]
       → Convert a Spotify or YouTube link into a DAB library
 
-  dabhounds.py --login
+  dabhounds --login
       → Log in to your DAB account
 
-  dabhounds.py --spotify-login
+  dabhounds --spotify-login
       → Authenticate with Spotify via OAuth (for private playlists)
 
-  dabhounds.py --logout
+  dabhounds --logout
       → Log out of DAB and Spotify
 
-  dabhounds.py --threshold <0-100>
+  dabhounds --threshold <0-100>
       → Override fuzzy match threshold for linient conversion (default: from config.json)
 
-  dabhounds.py --version
+  dabhounds --version
       → Show DABHounds version
 
-  dabhounds.py --update
+  dabhounds --update
       → Check for updates
 
-  dabhounds.py --credits
+  dabhounds --credits
       → View credits and acknowledgements
 """)
 
@@ -109,34 +110,13 @@ def check_latest_version(local_version):
 
 def perform_update():
     try:
-        print("[DABHound] Downloading latest version...")
-        r = requests.get(REPO_ZIP_URL, stream=True, timeout=15)
-        r.raise_for_status()
-
-        tmpdir = tempfile.mkdtemp()
-        zip_path = os.path.join(tmpdir, "update.zip")
-
-        with open(zip_path, "wb") as f:
-            shutil.copyfileobj(r.raw, f)
-
-        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-            zip_ref.extractall(tmpdir)
-
-        extracted_folder = os.path.join(tmpdir, "DABHounds-main")
-
-        for item in os.listdir(extracted_folder):
-            s = os.path.join(extracted_folder, item)
-            d = os.path.join(os.getcwd(), item)
-            if os.path.isdir(s):
-                if os.path.exists(d):
-                    shutil.rmtree(d)
-                shutil.copytree(s, d)
-            else:
-                shutil.copy2(s, d)
-
-        print("[DABHound] Update complete.")
-    except Exception as e:
+        print("[DABHound] Updating via pip...")
+        # Use the current Python executable to upgrade the package
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "--upgrade", "dabhounds"])
+        print("[DABHound] Update complete. Please restart the tool.")
+    except subprocess.CalledProcessError as e:
         print(f"[DABHound] Update failed: {e}")
+        print("[DABHound] Make sure you have internet access and pip installed.")
  
 def is_spotify_url(url: str) -> bool:
     return "open.spotify.com" in url
@@ -163,7 +143,7 @@ def logout():
 def main():
     parser = argparse.ArgumentParser(
         description="DABHounds: Convert Spotify or YouTube to DAB libraries",
-        usage="python dabhounds.py <link> [--mode strict|lenient|manual]"
+        usage="python dabhounds <link> [--mode strict|lenient|manual]"
     )
     parser.add_argument("link", nargs="?", help="Spotify/YouTube/ISRC input (Spotify & YouTube supported)")
     parser.add_argument("--mode", choices=["strict", "lenient", "manual"], default=None, help="Matching mode to use")
@@ -200,11 +180,11 @@ def main():
 
 
     if args.update:
-        remote_version = check_latest_version(version)
-        if remote_version:
-            confirm = input("Update to latest version? (y/N): ").strip().lower()
-            if confirm == "y":
-                perform_update()
+        confirm = input("This will upgrade DABHounds via pip. Continue? (y/N): ").strip().lower()
+        if confirm == "y":
+            perform_update()
+        else:
+            print("[DABHound] Update cancelled.")
         sys.exit(0)
 
 

@@ -15,6 +15,11 @@ All notable changes to this project will be documented in this file.
 ### Released
 - Published version 2.0.2 to PyPI.
 
-##[2.0.3] - 2025-0823
+##[2.0.3] - 2025-08-23
 ### Changed
 -  Added a proper user agent string. 
+
+##[2.0.4] - 2025-08-24
+### Fixed
+-  Fixed Spotify OAuth. Hardcoded client credentials.
+-  Fixed update atguement in cli.py to be pip compatible.
