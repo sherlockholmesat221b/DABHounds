@@ -147,7 +147,7 @@ dabhounds --update
 - **superadmin0 (Creator of DABMusic)** — for building and maintaining DABMusic, the rock-solid foundation for this tool.
 - [**uimaxbai (Contributor/Developer at DABMusic)**](https://github.com/uimaxbai) — for guiding the development of this tool and testing it firsthand.
 - [**joehacks (Contributor/Developer at DABMusic)**](https://github.com/holmesisback) — for testing the tool firsthand.
-- [**Squid.WTF**](https:// squid.wtf) — for graciously allowing the use of their API.
+- [**Squid.WTF**](https://squid.wtf) — for graciously allowing the use of their API.
 
 ---
 

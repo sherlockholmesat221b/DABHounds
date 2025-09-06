@@ -2,7 +2,7 @@
 
 import requests
 
-QOBUZ_API = "https://eu.qobuz.squid.wtf/api/get-music"
+QOBUZ_API = "https://qobuz.squid.wtf/api/get-music"
 
 def get_qobuz_ids_for_isrc(isrc: str):
     try:
