@@ -4,7 +4,7 @@ This file stores day-to-day logs written by contributors, tracking changes, impr
 ## sherlockholmesat221b
 
 ### 2025-09-18
-*Commits Made*: 3eee5b4, 69ee66b, d4ed2a9, 55253df
+**Commits Made**: 3eee5b4, 69ee66b, d4ed2a9, 55253df
 
 #### Added
 - Minimal configurations in the config file for downloads.
@@ -24,6 +24,7 @@ This file stores day-to-day logs written by contributors, tracking changes, impr
 - Turns out, you can have TODO.md and DEVLOGS.md files.
 - Moved dabhounds inside src.
 - Ensure that after downloadig is finished echo is turned on.
+
 #### Fixed
 - *(None for this session)*
 

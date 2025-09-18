@@ -4,7 +4,7 @@ This is the beta version of DABHounds, a TODO list is provided for reference. Fe
     - Current Downloader Limitations:
         - [x] Progress bar is minimal, lacking key details such as file size, download speed, and estimated time remaining.
         - [x] Downloaded files do not include metadata (e.g., artist, album, track info) or cover art.
-        - [ ] Filenames do not reflect track position¿
+        - [x] Filenames do not reflect track position¿
         - [x] No metadata is embedded.
         - [ ] Support for `.m3u8` playlist generation (similar to `dabcli`) should be added.
         - [ ] The download directory is in the code repo, which will be inaccessible when pushed to pip. Change the download directory to $HOME (or whstever).
