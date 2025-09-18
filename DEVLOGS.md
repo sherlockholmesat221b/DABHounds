@@ -22,8 +22,8 @@ This file stores day-to-day logs written by contributors, tracking changes, impr
 - Overall downloader is still unstable; further stabilization required.
 - Add a `dabhounds config` command to print the configuration directory.
 - Turns out, you can have TODO.md and DEVLOGS.md files.
-- moved dabhounds inside src.
-
+- Moved dabhounds inside src.
+- Ensure that after downloadig is finished echo is turned on.
 #### Fixed
 - *(None for this session)*
 

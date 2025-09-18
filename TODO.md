@@ -9,7 +9,7 @@ This is the beta version of DABHounds, a TODO list is provided for reference. Fe
         - [ ] Support for `.m3u8` playlist generation (similar to `dabcli`) should be added.
         - [ ] The download directory is in the code repo, which will be inaccessible when pushed to pip. Change the download directory to $HOME (or whstever).
 - [ ] Update `dabhounds/core/spotify_auth.py` to source Spotify credentials exclusively from `config.json`.
-
+- [ ] Ensure echo is turned off and terminal prints after downloading.
 - [ ] Introduce synchronization logic:
     - When generating `report.txt`, record the original source URL (e.g., `https://youtube.com/?playlist=...`).
     - On execution, check `report.txt` for the recorded source URL.
