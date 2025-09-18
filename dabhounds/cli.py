@@ -19,6 +19,7 @@ from dabhounds.core.library import create_library, add_tracks_to_library
 from dabhounds.core.report import generate_report
 from dabhounds.core.auth import login, ensure_logged_in, load_config, save_config
 from dabhounds.core.spotify_auth import get_spotify_client
+from dabhounds.core.downloader import download_tracks, get_library_tracks
 
 # Load user config (will auto-create ~/.dabhound/config.json if missing)
 config = load_config()
@@ -39,8 +40,10 @@ Special Thanks To: superadmin0, uimaxbai, joehacks, and Squid.WTF.
 
 Available Commands:
 
-  dabhounds <link> [--mode strict|lenient|manual]
+  dabhounds <link> [--mode strict|lenient|manual] [--download]
       → Convert a Spotify or YouTube link into a DAB library
+      → Or download from existing DAB library using lib:LIBRARY_ID format
+      → Use --download to also download matched tracks to local disk
 
   dabhounds --login
       → Log in to your DAB account
@@ -124,6 +127,9 @@ def is_spotify_url(url: str) -> bool:
 def is_youtube_url(url: str) -> bool:
     return "youtube.com" in url or "youtu.be" in url
 
+def is_library_id(input_str: str) -> bool:
+    return input_str.startswith("lib:")
+
 def logout():
     config = load_config()
     for key in [
@@ -145,8 +151,9 @@ def main():
         description="DABHounds: Convert Spotify or YouTube to DAB libraries",
         usage="python dabhounds <link> [--mode strict|lenient|manual]"
     )
-    parser.add_argument("link", nargs="?", help="Spotify/YouTube/ISRC input (Spotify & YouTube supported)")
+    parser.add_argument("link", nargs="?", help="Spotify/YouTube/ISRC input or DAB library ID (format: lib:LIBRARY_ID)")
     parser.add_argument("--mode", choices=["strict", "lenient", "manual"], default=None, help="Matching mode to use")
+    parser.add_argument("--download", action="store_true", help="Download matched tracks after creating library")
     parser.add_argument("--version", action="store_true", help="Show current version")
     parser.add_argument("--update", action="store_true", help="Check for updates (not implemented)")
     parser.add_argument("--login", action="store_true", help="Log in to DAB")
@@ -214,7 +221,29 @@ def main():
     match_mode = args.mode or config.get("MATCH_MODE", "lenient")
 
     # ==== TRACK FETCHING PHASE ====
-    if is_spotify_url(args.link):
+    if is_library_id(args.link):
+        print("[DABHound] Detected DAB library ID.")
+        library_id = args.link[4:]  # Remove "lib:" prefix
+        print(f"[DABHound] Fetching tracks from library: {library_id}")
+        tracks = get_library_tracks(library_id, token)
+
+        # For library downloads, we skip the matching phase since tracks are already from DAB
+        if not tracks:
+            print("[DABHound] No tracks found in library.")
+            sys.exit(1)
+
+        print(f"[DABHound] Found {len(tracks)} tracks in library.")
+
+        # Skip to download phase if --download is specified
+        if args.download:
+            print(f"\n[DABHound] Starting download of {len(tracks)} tracks from library...")
+            download_tracks(tracks, token)
+            sys.exit(0)
+        else:
+            print("[DABHound] Use --download flag to download tracks from this library.")
+            sys.exit(0)
+
+    elif is_spotify_url(args.link):
         print("[DABHound] Detected Spotify link.")
 
         try:
@@ -254,7 +283,7 @@ def main():
                     t["artist"], t["title"] = parts[0], parts[1]
 
     else:
-        print("[DABHound] Only Spotify and YouTube links are supported right now.")
+        print("[DABHound] Only Spotify, YouTube links, and DAB library IDs (lib:ID) are supported.")
         sys.exit(1)
 
     if not tracks:
@@ -288,6 +317,11 @@ def main():
     else:
         library_id = "(none)"
         print("[DABHound] No tracks matched. Skipping library creation.")
+
+    # ==== DOWNLOAD PHASE (if requested) ====
+    if args.download and matched_tracks:
+        print(f"\n[DABHound] Starting download of {len(matched_tracks)} matched tracks...")
+        download_tracks(matched_tracks, token)
 
     generate_report(tracks, matched_tracks, match_results, match_mode, library_name, library_id)
 
