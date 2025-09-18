@@ -1,3 +1,5 @@
+#dabhounds/cli,py
+
 import argparse
 import json
 import sys
@@ -19,7 +21,7 @@ from dabhounds.core.library import create_library, add_tracks_to_library
 from dabhounds.core.report import generate_report
 from dabhounds.core.auth import login, ensure_logged_in, load_config, save_config
 from dabhounds.core.spotify_auth import get_spotify_client
-from dabhounds.core.downloader import download_tracks, get_library_tracks
+from dabhounds.core.downloader import download_library, fetch_all_tracks as get_library_tracks
 
 # Load user config (will auto-create ~/.dabhound/config.json if missing)
 config = load_config()
@@ -237,7 +239,7 @@ def main():
         # Skip to download phase if --download is specified
         if args.download:
             print(f"\n[DABHound] Starting download of {len(tracks)} tracks from library...")
-            download_tracks(tracks, token)
+            download_library(library_id=library_id, token=token, quality="27", output_dir="downloads")
             sys.exit(0)
         else:
             print("[DABHound] Use --download flag to download tracks from this library.")
@@ -321,7 +323,8 @@ def main():
     # ==== DOWNLOAD PHASE (if requested) ====
     if args.download and matched_tracks:
         print(f"\n[DABHound] Starting download of {len(matched_tracks)} matched tracks...")
-        download_tracks(matched_tracks, token)
+        for idx, track in enumerate(matched_tracks, start=1):
+            download_track(track, token, directory="downloads", index=idx)
 
     generate_report(tracks, matched_tracks, match_results, match_mode, library_name, library_id)
 

@@ -12,7 +12,13 @@ MASTER_CONFIG = {
     "DAB_API_BASE": "https://dab.yeet.su/api",
     "MATCH_MODE": "lenient",
     "FUZZY_THRESHOLD": 80,
-    "SPOTIFY_TOKEN_INFO": None
+    "SPOTIFY_TOKEN_INFO": None,
+
+    "download": {
+        "use_metadata_tagging": True,
+        "get_lyrics": True,
+        "embed_cover": True
+    }
 }
 
 CONFIG_DIR = Path.home() / ".dabhound"
