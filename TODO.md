@@ -1,5 +1,5 @@
-This is the TODO list for the beta version of DABHounds, provided for reference. Feel free to use it as a guide and contribute improvements.
-# 2025-09-18 (YYYY-MM-DD)
+This is the beta version of DABHounds, a TODO list is provided for reference. Feel free to use it as a guide and contribute improvements which shall be pushed to the main DABHounds.
+# 2025-09-18
 - [ ] Implement an improved downloader leveraging `tqdm`, modeled after the `dabcli` download pipeline.
     - Current Downloader Limitations:
         - [ ] Progress bar is minimal, lacking key details such as file size, download speed, and estimated time remaining.
