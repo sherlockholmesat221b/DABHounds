@@ -18,7 +18,7 @@ def get_lyrics(title: str, artist: str) -> tuple[str, bool] | tuple[None, None]:
         return None, None
 
     config = load_config()
-    base_url = config.get("DAB_API_BASE", "https://dab.yeet.su/api")
+    base_url = config.get("DAB_API_BASE", "https://dabmusic.xyz/api")
 
     try:
         session = get_authenticated_session()

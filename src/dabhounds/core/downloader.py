@@ -89,9 +89,16 @@ def _format_filename(track: dict, index: int = None, ext: str = "flac") -> str:
 
 # --- API helpers ---
 def get_stream_url(track_id: str, token: str, quality: str = "27") -> Optional[str]:
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "User-Agent": CONFIG.get("USER_AGENT", "DABHounds/1.0"),
+    headers = {  
+        "Authorization": f"Bearer {token}",  
+        "User-Agent": CONFIG.get(  
+            "USER_AGENT",  
+            (  
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "  
+                "AppleWebKit/537.36 (KHTML, like Gecko) "  
+                "Chrome/1337.0.0.0 Safari/537.36"  
+            )  
+        ),  
     }
     try:
         resp = requests.get(

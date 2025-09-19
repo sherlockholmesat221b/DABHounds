@@ -1,6 +1,6 @@
 # 🐾 DABHounds
 
-**DABHounds** is a command-line utility that converts Spotify and YouTube playlists or individual tracks into [DABMusic](https://dab.yeet.su) libraries by matching tracks and generating compatible playlists.  
+**DABHounds** is a command-line utility that converts Spotify and YouTube playlists or individual tracks into [DABMusic](https://dabmusic.xyz) libraries by matching tracks and generating compatible playlists.  
 It supports multiple matching modes to optimize accuracy and lets you authenticate with both DAB and Spotify for private content access.
 
 ---
@@ -136,7 +136,7 @@ dabhounds --update
 
 ## 🌐 About DABMusic
 
-[DABMusic](https://dab.yeet.su) is a community-driven, digital music streaming platform focused on high-quality, unrestricted music access.
+[DABMusic](https://dabmusic.xyz) is a community-driven, digital music streaming platform focused on high-quality, unrestricted music access.
 
 
 ---
