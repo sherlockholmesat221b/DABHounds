@@ -71,7 +71,7 @@ DABHounds — “The hound is on the scent.”
 A vigilant tracker that sniffs out your music across DAB.
 Inspired by the keen nose of a bloodhound and the mysteries of Baker Street.
 
-Visit: https://dabmusic.xyz or https://dab.yeet.su
+Visit: https://dabmusic.xyz
 
 Developed by:
 sherlockholmesat221b (sherlockholmesat221b@proton.me)
@@ -284,7 +284,7 @@ def main():
         print(f"\n[DABHound] Creating DAB library: {library_name}")
         library_id = create_library(library_name, description="Created by DABHounds", is_public=True)
         add_tracks_to_library(library_id, matched_tracks)
-        print(f"[DABHound] Library created successfully! Link: https://dab.yeet.su/shared/library/{library_id}")
+        print(f"[DABHound] Library created successfully! Link: https://dabmusic.xyz/shared/library/{library_id}")
     else:
         library_id = "(none)"
         print("[DABHound] No tracks matched. Skipping library creation.")
