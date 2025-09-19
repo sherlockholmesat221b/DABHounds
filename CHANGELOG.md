@@ -26,7 +26,13 @@ All notable changes to this project will be documented in this file.
 
 ## [2.0.5] - 2025-09-06
 ### Changed
- - Updated [squid.wtf](https://qobuz.squid.wtf) API base to the latest API.
+- Updated [squid.wtf](https://qobuz.squid.wtf) API base to the latest API.
 
 ### Fixed
- - Fixed the squid.wtf url typo in `README.md`.
+- Fixed the squid.wtf url typo in `README.md`.
+
+## [2.0.6] - 2025-09-19
+### Changed
+- DABMusic's API base URL.
+### Fixed
+- SSL Certificate verification failed error. Done by superadmin0, verification is turned off.
