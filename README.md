@@ -71,7 +71,7 @@ dabhounds --login
 ```bash
 dabhounds --spotify-login
 ```
-**Note**: For Spotify OAuth to work, you will have to contact the owner.
+**Note**: To setup Spotify OAuth, refer to this [guide](https://rentry.co/dabhounds-spotify-setup)
 
 
 ### Logout

@@ -10,7 +10,7 @@ CONFIG_DIR = Path.home() / ".dabhound"
 CONFIG_FILE = CONFIG_DIR / "config.json"
 CACHE_FILE = CONFIG_DIR / ".cache-dabhound"
 SPOTIFY_SCOPES = "playlist-read-private playlist-read-collaborative"
-HOWTO_URL = "https://example.com/dabhounds-spotify-setup"  # <-- replace with your article link
+HOWTO_URL = "https://rentry.co/dabhounds-spotify-setup"
 
 def load_config() -> dict:
     if not CONFIG_FILE.exists():

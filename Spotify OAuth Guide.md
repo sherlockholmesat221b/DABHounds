@@ -1,6 +1,6 @@
 # 🎶 Setting up Spotify OAuth for DABHounds
 
-DABHounds can pull tracks from Spotify and convert them into DAB playlists. However, Spotify requires **OAuth client credentials** for anything that touches user data or editorial playlists, including private and collaborative playlists.  
+DABHounds can pull tracks from Spotify and convert them into DAB playlists. However, Spotify requires **OAuth client credentials** for anything that touches user data, including private and collaborative playlists.  
 
 Many developers initially try to ship a shared client ID/secret or use a test app. Spotify’s policies make this tricky: test apps are designed for **private use and limited users only**, and if they detect abuse or public distribution, the credentials can be revoked repeatedly. DABHounds experienced exactly this — apps in developer/test mode kept getting disabled.  
 
@@ -9,7 +9,7 @@ This guide explains how users can create their own Spotify app, add themselves a
 ---
 ## 🔓 What works without credentials?
 
-- **Public tracks, albums, and playlists** that are globally visible often work with the client credentials flow.  
+- **Public tracks, albums, and public playlists** that are globally visible often work with the client credentials flow.  
 - Metadata for individual tracks or albums can be fetched without OAuth.  
 
 This is enough for quick tests or basic conversions.  
@@ -19,8 +19,9 @@ This is enough for quick tests or basic conversions.
 
 - **Private playlists**  
 - **Collaborative playlists**  
-- **Editorial playlists and mixes** curated by Spotify (e.g., mood mixes, “Made for You,” Discover Weekly)  
-- Anything tied to your **personal account data**  
+- Anythng tied to your **personal account data**  
+
+> ⚠️ Important limitation: Even with OAuth using your own app, Spotify-generated libraries such as editorial playlists, algorithmic mixes (e.g., Discover Weekly, Release Radar), or other system-generated collections are not accessible via the API. You will get a 404 or empty results if you try to fetch these. Only playlists created by a user or collaborative playlists can be accessed.
 
 If you try to fetch these without OAuth, Spotify will usually return a **404 “Resource not found”**, even though the playlist exists.
 
@@ -76,7 +77,7 @@ On the next run, DABHounds will prompt you to log in to Spotify once. Your acces
 No. Free accounts can generate OAuth tokens and fetch playlists.  
 
 **Q: Will Spotify ban me for using this?**  
-Not probable.
+Probably not.
 
 **Q: Why can’t DABHounds ship credentials?**  
 Because test-mode apps are limited to a small set of testers. Publicly sharing credentials triggers Spotify to revoke them repeatedly, which is exactly what happened in prior DABHounds builds.  
