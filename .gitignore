@@ -23,3 +23,8 @@ Thumbs.db
 # Temp files
 *.tmp
 *.swp
+
+# Obsidian Files
+.obsidian/
+
+
