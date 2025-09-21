@@ -36,3 +36,7 @@ All notable changes to this project will be documented in this file.
 - DABMusic's API base URL.
 ### Fixed
 - SSL Certificate verification failed error. Done by superadmin0, verification is turned off.
+
+## [2.0.7] - 2025-09-21
+### Fixed
+- Made Spotify credentials user made.

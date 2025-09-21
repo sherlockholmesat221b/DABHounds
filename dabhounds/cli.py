@@ -83,12 +83,15 @@ Special Thanks To:
 - Squid.WTF — for graciously allowing the use of their API.
 """)
 
+
 def load_version():
     try:
         with open("VERSION", "r") as f:
             return f.read().strip()
     except FileNotFoundError:
         return "0.0.0"
+
+
 
 VERSION_URL = "https://raw.githubusercontent.com/sherlockholmesat221b/DABHounds/main/VERSION"
 REPO_ZIP_URL = "https://github.com/sherlockholmesat221b/DABHounds/archive/refs/heads/main.zip"
