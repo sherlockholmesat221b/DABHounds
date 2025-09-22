@@ -17,7 +17,8 @@ from spotipy.oauth2 import SpotifyClientCredentials
 from dabhounds.core.spotify import SpotifyFetcher  
 from dabhounds.core.youtube_parser_v3 import YouTubeParserV3  
 from dabhounds.core.dab import match_track  
-from dabhounds.core.library import create_library, add_tracks_to_library   
+from dabhounds.core.library import create_library, add_tracks_to_library  
+from dabhounds.core.report import find_reports_for_source, load_source_ids_from_report, append_to_report, REPORT_DIR
 from dabhounds.core.auth import login, ensure_logged_in, load_config, save_config  
 from dabhounds.core.spotify_auth import get_spotify_client  
   
@@ -265,32 +266,29 @@ def main():
         print("[DABHound] No tracks found in input.")  
         sys.exit(1)  
   
-    print(f"[DABHound] Found {len(tracks)} tracks.")  
-  
+    print(f"[DABHound] Found {len(tracks)} tracks.")
+
     # === Sync detection: look for existing report(s) with this source URL ===
-    from dabhounds.core.report import get_report_paths, load_source_ids, generate_report
-
-    report_paths = get_report_paths(args.link)
-
-    tracks_to_process = tracks
-    library_id = None
-    library_name = None
-
-    if report_paths["txt"].exists() and report_paths["json"].exists():
-        print(f"[DABHound] Found existing report for this source: {report_paths['txt'].name}")
-        existing_ids = load_source_ids(args.link)
-
-        new_tracks = [t for t in tracks if (t.get("spotify_id") or t.get("youtube_id")) not in existing_ids]
-
-        if not new_tracks:
-            print(f"[DABHound] {len(tracks)} tracks already present in report; will only process 0 new tracks.")
-            print("[DABHound] No new tracks to sync. Exiting.")
-            sys.exit(0)
+    matching_reports = find_reports_for_source(args.link)
+    if matching_reports:
+        # pick the most recent report
+        report_path = matching_reports[0]
+        print(f"[DABHound] Found existing report for this source: {report_path.name}")
+        existing_source_ids = load_source_ids_from_report(report_path)
+        # Filter out tracks already present in the report
+        tracks_to_process = [t for t in tracks if (t.get("source_id") and t.get("source_id") not in existing_source_ids)]
+        skipped = len(tracks) - len(tracks_to_process)
+        if skipped:
+            print(f"[DABHound] {skipped} tracks already present in report; will only process {len(tracks_to_process)} new tracks.")
         else:
-            print(f"[DABHound] {len(new_tracks)} new tracks to process.")
-            tracks_to_process = new_tracks
-      
-    # ==== MATCHING PHASE ====
+            print("[DABHound] No previously-synced tracks found in report; processing all tracks.")
+        append_mode = True
+    else:
+        report_path = None
+        tracks_to_process = tracks[:]  # process all
+        append_mode = False
+  
+    # ==== MATCHING PHASE ====  
     match_results = []
     matched_tracks = []
     total_tracks = len(tracks_to_process)
@@ -346,6 +344,14 @@ def main():
         else:
             library_id = "(none)"
             print("[DABHound] No tracks matched. Skipping library creation.")
+  
+    # Write or append report
+    if append_mode and report_path:
+        # append the newly-processed tracks to existing report
+        append_to_report(report_path, tracks_to_process, match_results, library_id, match_mode)
+    else:
+        # create a new report file (this will overwrite if same name exists)
+        generate_report(tracks_to_process, matched_tracks, match_results, match_mode, library_name, library_id, args.link)
   
 if __name__ == "__main__":  
     main()
