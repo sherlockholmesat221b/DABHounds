@@ -30,3 +30,14 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
  - Fixed the squid.wtf url typo in `README.md`.
+
+## [2.0.6] - 2025-09-19
+### Changed
+- DABMusic's API base URL.
+### Fixed
+- SSL Certificate verification failed error. Done by superadmin0, verification is turned 
+off.
+
+## [2.0.7] - 2025-09-21
+### Fixed
+- Made Spotify credentials user fed.
