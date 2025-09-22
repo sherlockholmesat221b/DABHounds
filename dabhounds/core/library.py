@@ -34,10 +34,23 @@ def create_library(name: str, description: str = "", is_public: bool = True) -> 
     response.raise_for_status()
     return response.json()["library"]["id"]
 
+import time
+
 def add_tracks_to_library(library_id: str, tracks: List[dict]) -> None:
     session = get_authenticated_session()
+    min_interval = 10 / 15  # ~0.6667 seconds per request
+    last_request = 0
+
     for track in tracks:
         payload = {"track": track}
+
+        # Wait if we are sending requests too fast
+        elapsed = time.time() - last_request
+        if elapsed < min_interval:
+            time.sleep(min_interval - elapsed)
+
         response = session.post(f"{API_BASE}/libraries/{library_id}/tracks", json=payload)
+        last_request = time.time()
+
         if not response.ok:
             print(f"[DABHound] Warning: Failed to add {track['title']} - {track['artist']}")

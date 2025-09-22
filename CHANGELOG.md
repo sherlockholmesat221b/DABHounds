@@ -40,3 +40,7 @@ All notable changes to this project will be documented in this file.
 ## [2.0.7] - 2025-09-21
 ### Fixed
 - Made Spotify credentials user made.
+
+## [2.0.8] - 2025-09-22
+### Fixed
+- DAB API rate limit issue while making library. Apparently, there was a rate limiting on DAB (15 requests per 10 seconds), which I was totally unaware of. Updated dabhounds/core/library.py. FUCK YOU SUPERADMIN0, YOU COULD HAVE ATLEAST INFORMED ME.
