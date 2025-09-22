@@ -10,6 +10,7 @@ import requests
 
 from spotipy import Spotify
 from spotipy.oauth2 import SpotifyClientCredentials
+
 from dabhounds.core.spotify import SpotifyFetcher
 from dabhounds.core.youtube_parser_v3 import YouTubeParserV3
 from dabhounds.core.dab import match_track
@@ -18,21 +19,23 @@ from dabhounds.core.report import generate_report, load_report, append_tracks_to
 from dabhounds.core.auth import login, ensure_logged_in, load_config, save_config
 from dabhounds.core.spotify_auth import get_spotify_client, spotify_logout
 
-config = load_config()
+# Load configuration
+cfg = load_config()
+
 ASCII_ART = r"""
-  _____          ____  _    _                       _     
- |  __ \   /\   |  _ \| |  | |                     | |    
- | |  | | /  \  | |_) | |__| | ___  _   _ _ __   __| |___ 
- | |  | |/ /\ \ |  _ <|  __  |/ _ \| | | | '_ \ / _` / __|
- | |__| / ____ \| |_) | |  | | (_) | |_| | | | | (_| \__ \
- |_____/_/    \_\____/|_|  |_|\___/ \__,_|_| |_|\__,_|___/
+  _____          ____  _    _                       _       
+ |  __ \   /\   |  _ \| |  | |                     | |      
+ | |  | | /  \  | |_) | |__| | ___  _   _ _ __   __| |___   
+ | |  | |/ /\ \ |  _ <|  __  |/ _ \| | | | '_ \ / _` / __|  
+ | |__| / ____ \| |_) | |  | | (_) | |_| | | | | (_| \__ \  
+ |_____/_/    \_\____/|_|  |_|\___/ \__,_|_| |_|\__,_|___/  
 """
 
 def show_main_menu():
     print(ASCII_ART)
     print("""
-Developed By: sherlockholmesat221b (sherlockholmesat221b@proton.me)
-Special Thanks To: superadmin0, uimaxbai, joehacks, and Squid.WTF.
+Developed By: sherlockholmesat221b
+Special Thanks To: superadmin0, uimaxbai, joehacks, Squid.WTF
 
 Available Commands:
 
@@ -43,13 +46,13 @@ Available Commands:
       → Log in to your DAB account
 
   dabhounds --spotify-login
-      → Authenticate with Spotify via OAuth (for private playlists)
+      → Authenticate with Spotify via OAuth
 
   dabhounds --logout
       → Log out of DAB and Spotify
 
   dabhounds --threshold <0-100>
-      → Override fuzzy match threshold for lenient conversion
+      → Override fuzzy match threshold
 
   dabhounds --version
       → Show DABHounds version
@@ -58,26 +61,18 @@ Available Commands:
       → Check for updates
 
   dabhounds --credits
-      → View credits and acknowledgements
+      → Show credits
 """)
 
 def show_credits():
     print(ASCII_ART)
     print("""
 DABHounds — “The hound is on the scent.”
-A vigilant tracker that sniffs out your music across DAB.
-Inspired by the keen nose of a bloodhound and the mysteries of Baker Street.
 
 Visit: https://dabmusic.xyz
 
-Developed by:
-sherlockholmesat221b (sherlockholmesat221b@proton.me)
-
-Special Thanks To:
-- superadmin0 (Creator of DABMusic)
-- uimaxbai (Contributor/Developer at DABMusic)
-- joehacks (Contributor/Developer at DABMusic)
-- Squid.WTF
+Developed by: sherlockholmesat221b
+Special Thanks To: superadmin0, uimaxbai, joehacks, Squid.WTF
 """)
 
 def load_version():
@@ -124,14 +119,11 @@ def logout():
     if os.path.exists(cache_path):
         os.remove(cache_path)
     spotify_logout()
-    print("[DABHound] Logged out and cleared all credentials.")
-
-def track_source_id(track: dict) -> str:
-    return track.get("spotify_id") or track.get("youtube_id") or track.get("isrc") or track.get("title")
+    print("[DABHound] Logged out and cleared credentials.")
 
 def main():
     parser = argparse.ArgumentParser(description="DABHounds: Convert Spotify or YouTube to DAB libraries")
-    parser.add_argument("link", nargs="?", help="Spotify/YouTube/ISRC input (Spotify & YouTube supported)")
+    parser.add_argument("link", nargs="?", help="Spotify/YouTube/ISRC input")
     parser.add_argument("--mode", choices=["strict","lenient","manual"], default=None)
     parser.add_argument("--version", action="store_true")
     parser.add_argument("--update", action="store_true")
@@ -140,135 +132,192 @@ def main():
     parser.add_argument("--spotify-login", action="store_true")
     parser.add_argument("--credits", action="store_true")
     parser.add_argument("--threshold", type=int, help="Override fuzzy threshold 0-100")
-
     args = parser.parse_args()
-    cfg = load_config()
-    version = load_version()
+
     fuzzy_threshold = args.threshold or cfg.get("FUZZY_THRESHOLD", 80)
 
-    if len(sys.argv)==1:
+    if len(sys.argv) == 1:
         show_main_menu()
         sys.exit(0)
 
     if args.credits:
         show_credits()
         sys.exit(0)
+
     if args.version:
-        print(f"DABHounds v{version}")
-        check_latest_version(version)
+        print(f"DABHounds v{load_version()}")
+        check_latest_version(load_version())
         sys.exit(0)
+
     if args.update:
         confirm = input("This will upgrade DABHounds via pip. Continue? (y/N): ").strip().lower()
         if confirm == "y":
             perform_update()
         sys.exit(0)
+
     if args.logout:
         logout()
         sys.exit(0)
+
     if args.login:
         email = input("Email: ").strip()
         password = input("Password: ").strip()
-        login(email,password)
+        login(email, password)
         sys.exit(0)
+
     if args.spotify_login:
         sp = get_spotify_client()
         print(f"[DABHound] Spotify login successful as: {sp.current_user()['display_name']}")
         sys.exit(0)
+
     if not args.link:
         parser.print_help()
         sys.exit(1)
 
+    # strip input URL
+    link = args.link.strip()
+    print(f"[DABHound] Input URL: {link}")
+    match_mode = args.mode or cfg.get("MATCH_MODE", "lenient")
     token = ensure_logged_in()
-    match_mode = args.mode or cfg.get("MATCH_MODE","lenient")
 
     # === TRACK FETCHING ===
-    if is_spotify_url(args.link):
+    tracks = []
+    if is_spotify_url(link):
         print("[DABHound] Detected Spotify link")
         try:
-            public_sp = Spotify(auth_manager=SpotifyClientCredentials(client_id=cfg.get("SPOTIPY_CLIENT_ID"), client_secret=cfg.get("SPOTIPY_CLIENT_SECRET")))
+            public_sp = Spotify(auth_manager=SpotifyClientCredentials(
+                client_id=cfg.get("SPOTIPY_CLIENT_ID"),
+                client_secret=cfg.get("SPOTIPY_CLIENT_SECRET")
+            ))
             fetcher = SpotifyFetcher(public_sp)
-            tracks = fetcher.extract_tracks(args.link)
-        except Exception as e:
+            tracks = fetcher.extract_tracks(link)
+        except Exception:
             print("[DABHound] Private/restricted playlist. Logging in...")
             sp = get_spotify_client()
             fetcher = SpotifyFetcher(sp)
-            tracks = fetcher.extract_tracks(args.link)
-    elif is_youtube_url(args.link):
-        print("[DABHound] Detected YouTube link")
-        parser_y = YouTubeParserV3(cfg.get("YOUTUBE",{}))
-        tracks = parser_y.parse(args.link)
+            tracks = fetcher.extract_tracks(link)
         for t in tracks:
-            if "safe_title" in t: t["title"]=t["safe_title"]
-            if "safe_artist" in t and t["safe_artist"]: t["artist"]=t["safe_artist"]
+            t["source_url"] = link
+    elif is_youtube_url(link):
+        print("[DABHound] Detected YouTube link")
+        parser_y = YouTubeParserV3(cfg.get("YOUTUBE", {}))
+        tracks = parser_y.parse(link)
+        for t in tracks:
+            if "safe_title" in t:
+                t["title"] = t["safe_title"]
+            if "safe_artist" in t and t["safe_artist"]:
+                t["artist"] = t["safe_artist"]
             if not t.get("artist") or "youtube" in t["artist"].lower():
                 if " - " in t["title"]:
-                    parts = t["title"].split(" - ",1)
-                    t["artist"],t["title"]=parts[0],parts[1]
+                    parts = t["title"].split(" - ", 1)
+                    t["artist"], t["title"] = parts[0], parts[1]
+            t["source_url"] = link
     else:
-        print("[DABHound] Only Spotify and YouTube supported")
+        print("[DABHound] Only Spotify and YouTube are supported")
         sys.exit(1)
+
     if not tracks:
         print("[DABHound] No tracks found")
         sys.exit(1)
+
     print(f"[DABHound] Found {len(tracks)} tracks")
 
-    # === REPORT/DEEP SYNC ===
+    # === Sync detection & filtering existing tracks ===
     existing_report = load_report(args.link)
+    append_mode = False  # default
     if existing_report:
-        existing_ids = {t["source_id"] for t in existing_report.get("tracks",[])}
-        tracks_to_process = [t for t in tracks if track_source_id(t) not in existing_ids]
+        existing_urls = {t["source_url"] for t in existing_report.get("tracks", [])}
+        tracks_to_process = [t for t in tracks if t["source_url"] not in existing_urls]
+        skipped_count = len(tracks) - len(tracks_to_process)
+        if skipped_count:
+            print(f"[DABHound] {skipped_count} tracks already present in report; processing {len(tracks_to_process)} new tracks.")
+        else:
+            print("[DABHound] No previously-synced tracks found; processing all tracks.")
         append_mode = True
-        if not tracks_to_process:
-            print("[DABHound] No new tracks to sync. Exiting.")
-            sys.exit(0)
-        print(f"[DABHound] {len(tracks_to_process)} new tracks to process")
     else:
         tracks_to_process = tracks[:]
-        append_mode = False
+        print("[DABHound] No previously-synced tracks; processing all tracks.")
 
-    # === MATCHING ===
-    match_results=[]
-    matched_tracks=[]
+    # === MATCHING TRACKS ===
+    matched_tracks = []
+    library_track_ids = []
+    
     for idx, track in enumerate(tracks_to_process, start=1):
-        print(f"[DABHound] Matching ({idx}/{len(tracks_to_process)}): {track.get('artist')} - {track.get('title')}")
-        res = match_track(track, match_mode, token, fuzzy_threshold)
-        match_results.append(res)
-        if res:
-            matched_tracks.append(res)
-            print(f"[DABHound] Matched: {res.get('artist')} - {res.get('title')} (ID: {res.get('id')})")
-        else:
-            print(f"[DABHound] No match found")
+        print(f"\n[DABHound] Matching ({idx}/{len(tracks_to_process)}): {track.get('artist','')} - {track.get('title','')}")
+        result = match_track(track, match_mode, token, fuzzy_threshold)
+    
+        # Report data
+        matched_tracks.append({
+            "artist": result.get("artist") if result else track.get("artist"),
+            "title": result.get("title") if result else track.get("title"),
+            "isrc": track.get("isrc"),
+            "match_status": "FOUND" if result else "NOT_FOUND",
+            "dab_track_id": result.get("id") if result else None,
+            "source_url": track.get("source_url"),
+        })
+    
+        # Library data
+        if result and result.get("id"):
+            library_track_ids.append(result.get("id"))
 
-    # === LIBRARY CREATION/UPDATE ===
+    # ==== LIBRARY CREATION + TRACK ADDITION ====
     if matched_tracks:
+        # Determine library name and ID
         if append_mode and existing_report:
             library_id = existing_report.get("library_id")
             library_name = existing_report.get("library_name")
-            print(f"[DABHound] Adding new tracks to existing library: {library_name}")
+            if not library_id:
+                print("[DABHound] Existing report has no library_id. Creating a new library instead.")
+                library_name = f"DABHounds {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+                library_id = create_library(library_name, description="Created by DABHounds", is_public=True)
+                print(f"[DABHound] Created new library: {library_name} ({library_id})")
+            else:
+                print(f"[DABHound] Appending new tracks to existing library: {library_name} ({library_id})")
         else:
-            library_name=f"DABHounds {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+            library_name = f"DABHounds {datetime.now().strftime('%Y-%m-%d %H:%M')}"
             library_id = create_library(library_name, description="Created by DABHounds", is_public=True)
-            print(f"[DABHound] Created new library: {library_name}")
-        add_tracks_to_library(library_id, matched_tracks)
-        print(f"[DABHound] Library updated! Link: https://dabmusic.xyz/shared/library/{library_id}")
+            print(f"[DABHound] Created new library: {library_name} ({library_id})")
+
+        # Filter only tracks that have a DAB track ID (already matched)
+        valid_tracks = [t for t in matched_tracks if t.get("dab_track_id")]
+        skipped_tracks = [t for t in matched_tracks if not t.get("dab_track_id")]
+
+        if skipped_tracks:
+            print(f"[DABHound] Skipping {len(skipped_tracks)} tracks with no match.")
+            for t in skipped_tracks:
+                print(f"    - {t.get('artist','?')} - {t.get('title','?')}")
+
+        if valid_tracks:
+            print(f"[DABHound] Adding {len(valid_tracks)} matched tracks to library...")
+            add_tracks_to_library(library_id, valid_tracks)
+            print(f"[DABHound] Library updated! Link: https://dabmusic.xyz/shared/library/{library_id}")
+        else:
+            print("[DABHound] No valid matched tracks to add. Library not updated.")
     else:
-        library_id = existing_report.get("library_id") if existing_report else "(none)"
-        print("[DABHound] No tracks matched.")
-
-    # === REPORT GENERATION ===
-    report_data = [{
-        "artist": t.get("artist"),
-        "title": t.get("title"),
-        "isrc": t.get("isrc"),
-        "source_id": track_source_id(t),
-        "match_status": "FOUND" if m else "NOT FOUND",
-        "dab_track": m
-    } for t,m in zip(tracks_to_process, match_results)]
-
-    if append_mode:
-        append_tracks_to_report(args.link, report_data, library_id=library_id, library_name=library_name)
+        print("[DABHound] No tracks matched. Skipping library creation.")
+        library_id = "(none)"
+    
+    # === REPORT WRITING (TXT + JSON) ===
+    if existing_report:
+        append_tracks_to_report(
+            link,
+            tracks_to_process,
+            library_id=library_id,
+            library_name=library_name,
+            matching_mode=match_mode
+        )
     else:
-        generate_report(tracks_to_process, matched_tracks, match_results, match_mode, library_name, library_id, source_url=args.link)
+        generate_report(
+            tracks_to_process,
+            matched_tracks,
+            match_results,
+            match_mode,
+            library_name,
+            library_id,
+            input_url=link
+        )
 
-if __name__=="__main__":
+    print(f"[DABHound] Conversion complete. Reports written for {len(matched_tracks)} tracks.")
+
+if __name__ == "__main__":
     main()
