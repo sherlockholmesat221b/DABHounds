@@ -1,141 +1,112 @@
 # dabhounds/core/report.py
 
-from typing import List, Dict, Set
-from datetime import datetime
+import json
+import hashlib
 from pathlib import Path
+from datetime import datetime
+from typing import List, Dict
 
-# Define user config/report directory
 CONFIG_DIR = Path.home() / ".dabhound"
 REPORT_DIR = CONFIG_DIR / "reports"
-REPORT_DIR.mkdir(parents=True, exist_ok=True)  # Create if missing
+REPORT_DIR.mkdir(parents=True, exist_ok=True)
 
-def _safe_library_filename(library_name: str) -> str:
-    safe_library_name = library_name.replace(" ", "_").replace(":", "-")
-    return f"report_{safe_library_name}.txt"
+def md5_hash(text: str) -> str:
+    return hashlib.md5(text.encode("utf-8")).hexdigest()
 
-def generate_report(input_tracks: List[Dict],
-                    matched_tracks: List[Dict],
-                    match_results: List[Dict],
-                    mode: str,
-                    library_name: str,
-                    library_id: str,
-                    source_url: str):
-    """
-    Create a fresh report (overwrites if same filename exists).
-    """
+def generate_report(input_tracks: List[Dict], matched_tracks: List[Dict], match_results: List[Dict],
+                    mode: str, library_name: str, library_id: str, source_url: str):
+    """Generate both TXT (verbose) and JSON (minimal) reports with source_url at top-level."""
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+    # TXT report
     lines = [f"DABHounds Conversion Report — {timestamp}",
-             f"Source: {source_url}",
+             f"Source URL: {source_url}",
              f"Matching Mode: {mode.upper()}",
              f"DAB Library ID: {library_id}",
-             "-" * 60]
+             "-"*60]
 
     for i, original in enumerate(input_tracks):
-        match = match_results[i] if i < len(match_results) else None
+        match = match_results[i]
         matched = "FOUND" if match else "NOT FOUND"
-
-        lines.append(f"{i + 1}. {original.get('artist','')} - {original.get('title','')}")
+        lines.append(f"{i+1}. {original['artist']} - {original['title']}")
         lines.append(f"    ISRC: {original.get('isrc') or 'N/A'}")
-        lines.append(f"    Source URL: {original.get('source_id') or 'N/A'}")
         lines.append(f"    Match Status: {matched}")
-
         if match:
-            lines.append(f"    DAB Track: {match.get('artist','')} - {match.get('title','')} (ID: {match.get('id')})")
+            lines.append(f"    DAB Track: {match['artist']} - {match['title']} (ID: {match['id']})")
         else:
             lines.append("    DAB Track: —")
-
+        lines.append(f"    Source URL: {source_url}")
         lines.append("")
 
-    report_path = REPORT_DIR / _safe_library_filename(library_name)
-
-    with report_path.open("w", encoding="utf-8") as f:
+    safe_name = library_name.replace(" ", "_").replace(":", "-")
+    txt_path = REPORT_DIR / f"report_{safe_name}.txt"
+    with txt_path.open("w", encoding="utf-8") as f:
         f.write("\n".join(lines))
 
-    print(f"[DABHound] Saved match report to {report_path}")
-    return report_path
+    # JSON report
+    json_path = REPORT_DIR / f"report_{md5_hash(source_url)}.json"
+    json_data = []
+    for i, original in enumerate(input_tracks):
+        match = match_results[i]
+        json_data.append({
+            "artist": original["artist"],
+            "title": original["title"],
+            "isrc": original.get("isrc"),
+            "match_status": "FOUND" if match else "NOT FOUND",
+            "dab_track_id": match["id"] if match else None,
+            "source_url": source_url
+        })
+    json_report = {
+        "library_name": library_name,
+        "library_id": library_id,
+        "matching_mode": mode,
+        "timestamp": timestamp,
+        "source_url": source_url,
+        "tracks": json_data
+    }
+    with json_path.open("w", encoding="utf-8") as f:
+        json.dump(json_report, f, indent=2)
 
-# ---- New helper: scan all reports for a matching Source line ----
-def find_reports_for_source(source_url: str) -> List[Path]:
-    """
-    Search every .txt file in REPORT_DIR for a line starting with 'Source:'
-    that exactly matches source_url. Returns a list of matching Path objects,
-    sorted by modification time (newest first).
-    """
-    matches: List[Path] = []
-    for p in REPORT_DIR.glob("*.txt"):
-        try:
-            with p.open("r", encoding="utf-8") as f:
-                for line in f:
-                    if line.strip().startswith("Source:"):
-                        # Extract remainder after "Source:"
-                        existing = line.split("Source:", 1)[1].strip()
-                        if existing == source_url:
-                            matches.append(p)
-                        break  # stop reading further lines in this file
-        except Exception:
-            # ignore read errors and continue scanning other files
-            continue
+    print(f"[DABHound] Saved report to {txt_path} and {json_path}")
 
-    # sort newest-first
-    matches.sort(key=lambda p: p.stat().st_mtime, reverse=True)
-    return matches
 
-def load_source_ids_from_report(report_path: Path) -> Set[str]:
-    """
-    Parse a report and return the set of all Source URL values already recorded in it.
-    (This looks for lines that start with 'Source URL:' in the body of the report.)
-    """
-    existing_ids = set()
-    try:
-        with report_path.open("r", encoding="utf-8") as f:
-            for line in f:
-                l = line.strip()
-                if l.startswith("Source URL:"):
-                    # get everything after "Source URL:"
-                    sid = l.split("Source URL:", 1)[1].strip()
-                    if sid:
-                        existing_ids.add(sid)
-    except Exception:
-        pass
-    return existing_ids
+def load_report(source_url: str) -> Dict:
+    """Load JSON report for a given source_url (by md5)."""
+    json_path = REPORT_DIR / f"report_{md5_hash(source_url)}.json"
+    if not json_path.exists():
+        return {}
+    with json_path.open("r", encoding="utf-8") as f:
+        return json.load(f)
 
-def append_to_report(report_path: Path,
-                     new_tracks: List[Dict],
-                     new_match_results: List[Dict],
-                     library_id: str,
-                     mode: str):
-    """
-    Append a sync block for new_tracks to an existing report file.
-    new_tracks and new_match_results must be aligned (same length).
-    """
-    if not new_tracks:
-        return
 
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
-    lines = []
-    lines.append("")
-    lines.append(f"[DABHounds Sync — {timestamp}]")
-    lines.append(f"Matching Mode: {mode.upper()}")
-    lines.append(f"DAB Library ID: {library_id}")
-    lines.append("-" * 60)
+def append_tracks_to_report(source_url: str, new_tracks: List[Dict], library_id: str, library_name: str, matching_mode: str):
+    """Append new tracks to existing JSON report (TXT stays as-is)."""
+    report = load_report(source_url)
+    if not report:
+        # fallback: create new
+        return generate_report(
+            input_tracks=[t for t in new_tracks],
+            matched_tracks=[t for t in new_tracks if t.get("dab_track_id")],
+            match_results=[{"id": t.get("dab_track_id")} if t.get("dab_track_id") else None for t in new_tracks],
+            mode=matching_mode,
+            library_name=library_name,
+            library_id=library_id,
+            source_url=source_url
+        )
 
-    for i, track in enumerate(new_tracks):
-        match = new_match_results[i] if i < len(new_match_results) else None
-        matched = "FOUND" if match else "NOT FOUND"
-
-        lines.append(f"{track.get('artist','')} - {track.get('title','')}")
-        lines.append(f"    ISRC: {track.get('isrc') or 'N/A'}")
-        lines.append(f"    Source URL: {track.get('source_id') or 'N/A'}")
-        lines.append(f"    Match Status: {matched}")
-        if match:
-            lines.append(f"    DAB Track: {match.get('artist','')} - {match.get('title','')} (ID: {match.get('id')})")
-        else:
-            lines.append("    DAB Track: —")
-        lines.append("")
-
-    try:
-        with report_path.open("a", encoding="utf-8") as f:
-            f.write("\n".join(lines))
-        print(f"[DABHound] Appended {len(new_tracks)} tracks to {report_path}")
-    except Exception as e:
-        print(f"[DABHound] Failed to append to report: {e}")
+    # Append to existing tracks
+    for t in new_tracks:
+        report["tracks"].append({
+            "artist": t["artist"],
+            "title": t["title"],
+            "isrc": t.get("isrc"),
+            "match_status": "FOUND" if t.get("dab_track_id") else "NOT FOUND",
+            "dab_track_id": t.get("dab_track_id"),
+            "source_url": source_url
+        })
+    # Update timestamp
+    report["timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M")
+    # Save back
+    json_path = REPORT_DIR / f"report_{md5_hash(source_url)}.json"
+    with json_path.open("w", encoding="utf-8") as f:
+        json.dump(report, f, indent=2)
+    print(f"[DABHound] Appended {len(new_tracks)} tracks to JSON report {json_path}")
