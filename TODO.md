@@ -14,3 +14,10 @@ This is the beta version of DABHounds, a TODO list is provided for reference. Fe
     - When generating `report.txt`, record the original source URL (e.g., `https://youtube.com/?playlist=...`).
     - On execution, check `report.txt` for the recorded source URL.
     - If found, compare the referenced playlist with the DAB library to ensure consistency, automatically adding or removing tracks to maintain synchronization.
+- [ ] Fix the following error
+```bash
+  ~ $ dabhounds --version
+DABHounds v0.0.0
+[DABHound] New version available: 2.0.6 (current: 0.0.0). Run --update to update.
+  ```
+  
