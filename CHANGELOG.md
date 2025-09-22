@@ -45,3 +45,6 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 - DAB API rate limit issue while making library. Apparently, there was a rate limiting on DAB (15 requests per 10 seconds), which I was totally unaware of. Updated dabhounds/core/library.py. FUCK YOU SUPERADMIN0, YOU COULD HAVE ATLEAST INFORMED ME.
 - Also updated dab.py to respect the rate limit.
+
+## Added
+- Added a playlist sync feature.
