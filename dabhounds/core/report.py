@@ -81,10 +81,11 @@ def load_report(source_url: str) -> Dict:
 
 
 def append_tracks_to_report(source_url: str, new_tracks: List[Dict], library_id: str, library_name: str, matching_mode: str):
-    """Append new tracks to existing JSON report."""
+    """Append new tracks to existing JSON report and update TXT report."""
     report = load_report(source_url)
+
+    # fallback: create new report if none exists
     if not report:
-        # fallback: create new
         return generate_report(
             input_tracks=[t for t in new_tracks],
             matched_tracks=[t for t in new_tracks if t.get("dab_track_id")],
@@ -95,11 +96,10 @@ def append_tracks_to_report(source_url: str, new_tracks: List[Dict], library_id:
             source_url=source_url
         )
 
-    # Create a set of existing track_ids for deduplication
+    # deduplicate by track_id
     existing_ids = {t.get("track_id") for t in report.get("tracks", [])}
-
-    # Append only new tracks
     appended_count = 0
+
     for t in new_tracks:
         track_id = t.get("track_id") or f"{t['artist']} - {t['title']}"
         if track_id not in existing_ids:
@@ -114,11 +114,37 @@ def append_tracks_to_report(source_url: str, new_tracks: List[Dict], library_id:
             existing_ids.add(track_id)
             appended_count += 1
 
-    # Update timestamp
-    report["timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M")
-    # Save back
+    # update timestamp
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+    report["timestamp"] = timestamp
+
+    # save JSON report
     json_path = REPORT_DIR / f"report_{md5_hash(source_url)}.json"
     with json_path.open("w", encoding="utf-8") as f:
         json.dump(report, f, indent=2)
 
-    print(f"[DABHound] Appended {appended_count} new tracks to JSON report {json_path}")
+    # save TXT report
+    lines = [
+        f"DABHounds Conversion Report — {timestamp}",
+        f"Source URL: {source_url}",
+        f"Matching Mode: {matching_mode.upper()}",
+        f"DAB Library ID: {library_id}",
+        "-"*60
+    ]
+    for i, t in enumerate(report["tracks"], start=1):
+        lines.append(f"{i}. {t['artist']} - {t['title']}")
+        lines.append(f"    ISRC: {t.get('isrc') or 'N/A'}")
+        lines.append(f"    Match Status: {t.get('match_status', 'NOT FOUND')}")
+        if t.get("dab_track_id"):
+            lines.append(f"    DAB Track: {t['artist']} - {t['title']} (ID: {t['dab_track_id']})")
+        else:
+            lines.append("    DAB Track: —")
+        lines.append(f"    Track ID: {t.get('track_id', 'N/A')}")
+        lines.append("")
+
+    safe_name = library_name.replace(" ", "_").replace(":", "-")
+    txt_path = REPORT_DIR / f"report_{safe_name}.txt"
+    with txt_path.open("w", encoding="utf-8") as f:
+        f.write("\n".join(lines))
+
+    print(f"[DABHound] Appended {appended_count} new tracks to JSON report {json_path} and TXT report {txt_path}")

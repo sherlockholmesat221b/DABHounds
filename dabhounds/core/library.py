@@ -56,7 +56,6 @@ def add_tracks_to_library(library_id: str, tracks: List[dict]) -> None:
   
     for track in tracks:  
         payload = {"track": transform_track_for_dab(track)}  
-        print(f"[DEBUG] Sending track to DAB: {payload}")  # debug  
   
         elapsed = time.time() - last_request  
         if elapsed < min_interval:  
@@ -64,8 +63,6 @@ def add_tracks_to_library(library_id: str, tracks: List[dict]) -> None:
   
         response = session.post(f"{API_BASE}/libraries/{library_id}/tracks", json=payload)  
         last_request = time.time()  
-  
-        print(f"[DEBUG] Response: {response.status_code} {response.text}")  # debug  
   
         if not response.ok:  
             print(f"[DABHound] Warning: Failed to add {track['title']} - {track['artist']}")

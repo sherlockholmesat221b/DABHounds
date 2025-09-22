@@ -23,12 +23,12 @@ from dabhounds.core.spotify_auth import get_spotify_client, spotify_logout
 cfg = load_config()
 
 ASCII_ART = r"""
-  _____          ____  _    _                       _       
- |  __ \   /\   |  _ \| |  | |                     | |      
- | |  | | /  \  | |_) | |__| | ___  _   _ _ __   __| |___   
- | |  | |/ /\ \ |  _ <|  __  |/ _ \| | | | '_ \ / _` / __|  
- | |__| / ____ \| |_) | |  | | (_) | |_| | | | | (_| \__ \  
- |_____/_/    \_\____/|_|  |_|\___/ \__,_|_| |_|\__,_|___/  
+  _____          ____  _    _                       _         
+ |  __ \   /\   |  _ \| |  | |                     | |        
+ | |  | | /  \  | |_) | |__| | ___  _   _ _ __   __| |___     
+ | |  | |/ /\ \ |  _ <|  __  |/ _ \| | | | '_ \ / _` / __|    
+ | |__| / ____ \| |_) | |  | | (_) | |_| | | | | (_| \__ \    
+ |_____/_/    \_\____/|_|  |_|\___/ \__,_|_| |_|\__,_|___/    
 """
 
 def show_main_menu():
@@ -227,7 +227,6 @@ def main():
     append_mode = False
 
     if existing_report:
-        # Build set of unique track IDs from existing report
         existing_ids = set()
         for t in existing_report.get("tracks", []):
             if "spotify_id" in t:
@@ -237,10 +236,8 @@ def main():
             elif "isrc" in t and t["isrc"]:
                 existing_ids.add(t["isrc"])
             else:
-                # fallback: title+artist combo
                 existing_ids.add(f"{t['artist']} - {t['title']}")
-    
-        # Filter tracks to only include new ones
+
         tracks_to_process = []
         for t in tracks:
             track_id = t.get("spotify_id") or t.get("yt_id") or t.get("isrc") or f"{t['artist']} - {t['title']}"
@@ -258,36 +255,35 @@ def main():
         tracks_to_process = tracks[:]
         print("[DABHound] No previously-synced tracks; processing all tracks.")
 
-    # === MATCHING TRACKS ===
-    matched_tracks = []
-    match_results = []
-    for idx, track in enumerate(tracks_to_process, start=1):
-        print(f"\n[DEBUG] Matching ({idx}/{len(tracks_to_process)}): {track.get('artist','')} - {track.get('title','')}")
-        result = match_track(track, match_mode, token, fuzzy_threshold)
-        match_results.append(result or {})
-        if result:
-            matched_tracks.append({
-                "artist": result.get("artist", track.get("artist")),
-                "title": result.get("title", track.get("title")),
-                "isrc": track.get("isrc"),
-                "match_status": "FOUND",
-                "dab_track_id": result.get("id"),
-                "source_url": track.get("source_url"),
-                "full_track": result  # <--- attach the full DAB track dict
-            })
-        else:
-            matched_tracks.append({
-                "artist": track.get("artist"),
-                "title": track.get("title"),
-                "isrc": track.get("isrc"),
-                "match_status": "NOT_FOUND",
-                "dab_track_id": None,
-                "source_url": track.get("source_url"),
-            })
+    # === MATCHING TRACKS ===  
+    matched_tracks = []  
+    match_results = []  
+    for idx, track in enumerate(tracks_to_process, start=1):  
+        print(f"\n[DABHound] Matching ({idx}/{len(tracks_to_process)}): {track.get('artist','')} - {track.get('title','')}")  
+        result = match_track(track, match_mode, token, fuzzy_threshold)  
+        match_results.append(result or {})  
 
-    print(f"[DEBUG] Total matched_tracks: {len(matched_tracks)}")
-    for i, t in enumerate(matched_tracks, start=1):
-        print(f"[DEBUG] Track {i}: {t['title']} - {t['artist']} | DAB ID: {t['dab_track_id']} | Status: {t['match_status']}")
+        if result:  
+            print(f"[DABHound] Match found: {result.get('artist','')} - {result.get('title','')} (DAB ID: {result.get('id')})")  
+            matched_tracks.append({  
+                "artist": result.get("artist", track.get("artist")),  
+                "title": result.get("title", track.get("title")),  
+                "isrc": track.get("isrc"),  
+                "match_status": "FOUND",  
+                "dab_track_id": result.get("id"),  
+                "source_url": track.get("source_url"),  
+                "full_track": result  # <--- attach the full DAB track dict  
+            })  
+        else:  
+            print(f"[DABHound] No match found for: {track.get('artist','')} - {track.get('title','')}")  
+            matched_tracks.append({  
+                "artist": track.get("artist"),  
+                "title": track.get("title"),  
+                "isrc": track.get("isrc"),  
+                "match_status": "NOT_FOUND",  
+                "dab_track_id": None,  
+                "source_url": track.get("source_url"),  
+            })
 
     # === LIBRARY CREATION / UPDATE ===
     library_id = "(none)"
@@ -297,25 +293,23 @@ def main():
         if append_mode and existing_report:
             library_id = existing_report.get("library_id", "(none)")
             library_name = existing_report.get("library_name", f"DABHounds {datetime.now().strftime('%Y-%m-%d %H:%M')}")
-            print(f"[DEBUG] Adding new tracks to existing library: {library_name}")
+            print(f"[DABHound] Adding new tracks to existing library: {library_name}")
         else:
             library_name = f"DABHounds {datetime.now().strftime('%Y-%m-%d %H:%M')}"
-            print(f"[DEBUG] Creating new library: {library_name}")
+            print(f"[DABHound] Creating new library: {library_name}")
             library_id = create_library(library_name, description="Created by DABHounds", is_public=True)
-            print(f"[DEBUG] Library created. ID: {library_id}")
+            print(f"[DABHound] Library created. ID: {library_id}")
 
         if matched_tracks:
-            print(f"[DEBUG] Preparing to add tracks to library: {library_id}")
             add_tracks_to_library(library_id, matched_tracks)
             print(f"[DABHound] Library updated! Link: https://dabmusic.xyz/shared/library/{library_id}")
     else:
-        # No new matches in this run
         if append_mode and existing_report:
             library_id = existing_report.get("library_id", "(none)")
             library_name = existing_report.get("library_name", "(none)")
-            print("[DEBUG] No new matches found to append; using existing library info.")
+            print("[DABHound] No new matches found to append; using existing library info.")
         else:
-            print("[DEBUG] No tracks matched; skipping library creation.")
+            print("[DABHound] No tracks matched; skipping library creation.")
 
     # === REPORT WRITING (TXT + JSON) ===
     if append_mode and existing_report:
