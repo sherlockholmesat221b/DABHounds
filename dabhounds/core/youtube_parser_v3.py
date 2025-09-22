@@ -310,6 +310,7 @@ class YouTubeParserV3:
             "raw_title": raw_entry.get("title"),
             "raw_uploader": raw_entry.get("uploader"),
             "notes": base.get("note", ""),
+            "source_id": f"https://youtube.com/watch?v={youtube_id}" if youtube_id else None,
         }
         # include chapter metadata if relevant
         if chapter and chapter.get("start_sec"):

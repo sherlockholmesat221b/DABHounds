@@ -9,9 +9,16 @@ CONFIG_DIR = Path.home() / ".dabhound"
 REPORT_DIR = CONFIG_DIR / "reports"
 REPORT_DIR.mkdir(parents=True, exist_ok=True)  # Create if missing
 
-def generate_report(input_tracks: List[Dict], matched_tracks: List[Dict], match_results: List[Dict], mode: str, library_name: str, library_id: str):
+def generate_report(input_tracks: List[Dict],
+                    matched_tracks: List[Dict],
+                    match_results: List[Dict],
+                    mode: str,
+                    library_name: str,
+                    library_id: str,
+                    source_url: str):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
     lines = [f"DABHounds Conversion Report — {timestamp}",
+             f"Source: {source_url}",
              f"Matching Mode: {mode.upper()}",
              f"DAB Library ID: {library_id}",
              "-" * 60]
@@ -22,6 +29,7 @@ def generate_report(input_tracks: List[Dict], matched_tracks: List[Dict], match_
 
         lines.append(f"{i + 1}. {original['artist']} - {original['title']}")
         lines.append(f"    ISRC: {original.get('isrc') or 'N/A'}")
+        lines.append(f"    Source URL: {original.get('source_id') or 'N/A'}")
         lines.append(f"    Match Status: {matched}")
 
         if match:

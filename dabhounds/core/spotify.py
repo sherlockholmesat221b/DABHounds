@@ -33,7 +33,8 @@ class SpotifyFetcher:
                     "artist": ", ".join([a["name"] for a in track["artists"]]),
                     "isrc": track["external_ids"].get("isrc"),
                     "duration_ms": track["duration_ms"],
-                    "spotify_id": track["id"]
+                    "spotify_id": track["id"],
+                    "source_id": track["external_urls"]["spotify"],
                 })
             if results["next"]:
                 results = self.sp.next(results)
@@ -54,27 +55,28 @@ class SpotifyFetcher:
                 "artist": ", ".join([a["name"] for a in item["artists"]]),
                 "isrc": track_info.get("external_ids", {}).get("isrc"),
                 "duration_ms": item["duration_ms"],
-                "spotify_id": item["id"]
+                "spotify_id": item["id"],
+                "source_id": track_info["external_urls"]["spotify"],  # 🔹 add URL here
             })
 
         return tracks
 
     def get_track(self, track_url: str) -> List[Dict]:
-            track_id = track_url.split("/")[-1].split("?")[0]
-            track = self.sp.track(track_id)
-            return [{
-                "title": track["name"],
-                "artist": ", ".join([a["name"] for a in track["artists"]]),
-                "isrc": track["external_ids"].get("isrc"),
-                "duration_ms": track["duration_ms"],
-                "spotify_id": track["id"]
-            }]
-    
+        track_id = track_url.split("/")[-1].split("?")[0]
+        track = self.sp.track(track_id)
+        return [{
+            "title": track["name"],
+            "artist": ", ".join([a["name"] for a in track["artists"]]),
+            "isrc": track["external_ids"].get("isrc"),
+            "duration_ms": track["duration_ms"],
+            "spotify_id": track["id"],
+            "source_id": track["external_urls"]["spotify"],  # 🔹 add URL here
+        }]
+
     def extract_tracks(self, url: str) -> List[Dict]:
         kind = self.detect_spotify_type(url)
-    
+
         try:
-            # First try with whatever client is currently set
             if kind == "playlist":
                 return self.get_playlist_tracks(url)
             elif kind == "album":
@@ -85,8 +87,8 @@ class SpotifyFetcher:
             if e.http_status == 404:
                 from dabhounds.core.spotify_auth import get_spotify_client
                 print("[DABHound] Resource not found with public client, retrying with OAuth...")
-                self.sp = get_spotify_client()  # swap to OAuth client
-    
+                self.sp = get_spotify_client()
+
                 try:
                     if kind == "playlist":
                         return self.get_playlist_tracks(url)

@@ -1,3 +1,5 @@
+# dabhounds/cli.py 
+
 import argparse
 import json
 import sys
@@ -292,7 +294,15 @@ def main():
         library_id = "(none)"
         print("[DABHound] No tracks matched. Skipping library creation.")
 
-    generate_report(tracks, matched_tracks, match_results, match_mode, library_name, library_id)
+    generate_report(
+        tracks,
+        matched_tracks,
+        match_results,
+        match_mode,
+        library_name,
+        library_id,
+        args.link
+    )
 
 if __name__ == "__main__":
     main()

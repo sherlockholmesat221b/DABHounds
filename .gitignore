@@ -27,4 +27,5 @@ Thumbs.db
 # Obsidian Files
 .obsidian/
 
-
+# Cache
+.cache
