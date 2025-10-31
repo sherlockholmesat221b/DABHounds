@@ -48,3 +48,8 @@ All notable changes to this project will be documented in this file.
 
 ## Added
 - Added a playlist sync feature.
+
+## [2.0.9] - 2025-10-31
+### Fixed
+- Fixed the DAB search query to use session cookie considering how new DAB API search enpoint is protected.
+
