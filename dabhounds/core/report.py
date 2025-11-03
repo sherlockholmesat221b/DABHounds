@@ -148,3 +148,22 @@ def append_tracks_to_report(source_url: str, new_tracks: List[Dict], library_id:
         f.write("\n".join(lines))
 
     print(f"[DABHound] Appended {appended_count} new tracks to JSON report {json_path} and TXT report {txt_path}")
+
+def delete_report(link: str):
+    """Delete old report files (txt and json) associated with a link."""
+    md5_hash = hashlib.md5(link.encode("utf-8")).hexdigest()
+    reports_dir = Path("reports")
+    if not reports_dir.exists():
+        return
+
+    deleted_any = False
+    for ext in [".json", ".txt"]:
+        for file in reports_dir.glob(f"{md5_hash}*{ext}"):
+            try:
+                os.remove(file)
+                deleted_any = True
+            except Exception:
+                pass
+
+    if deleted_any:
+        print(f"[DABHound] Old report(s) for this link removed.")

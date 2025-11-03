@@ -17,7 +17,21 @@ def get_headers():
             "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/1337.0.0.0 Safari/537.36"  
         )  
     }  
-  
+
+def library_exists(library_id: str) -> bool:
+    """Check if a DAB library with this ID still exists."""
+    session = get_authenticated_session()
+    try:
+        response = session.get(f"{API_BASE}/libraries/{library_id}")
+        if response.status_code == 200:
+            return True
+        if response.status_code == 404:
+            return False
+        # For safety: treat anything else as non-existent
+        return False
+    except Exception:
+        return False
+
 def create_library(name: str, description: str = "", is_public: bool = True) -> str:  
     session = get_authenticated_session()  
     payload = {  

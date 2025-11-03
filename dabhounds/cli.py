@@ -14,7 +14,7 @@ from spotipy.oauth2 import SpotifyClientCredentials
 from dabhounds.core.spotify import SpotifyFetcher
 from dabhounds.core.youtube_parser_v3 import YouTubeParserV3
 from dabhounds.core.dab import match_track
-from dabhounds.core.library import create_library, add_tracks_to_library
+from dabhounds.core.library import create_library, add_tracks_to_library, library_exists
 from dabhounds.core.report import generate_report, load_report, append_tracks_to_report
 from dabhounds.core.auth import login, ensure_logged_in, load_config, save_config
 from dabhounds.core.spotify_auth import get_spotify_client, spotify_logout
@@ -67,7 +67,7 @@ Available Commands:
 def show_credits():
     print(ASCII_ART)
     print("""
-DABHounds — “The hound is on the scent.”
+DABHounds — "The hound is on the scent."
 
 Visit: https://dabmusic.xyz
 
@@ -174,8 +174,17 @@ def main():
         parser.print_help()
         sys.exit(1)
 
-    # strip input URL
+    # strip input URL and remove tracking parameters
     link = args.link.strip()
+    
+    # Remove ?si= parameter from Spotify links
+    if "?si=" in link:
+        link = link.split("?si=")[0]
+    
+    # Remove &si= parameter from Spotify links
+    if "&si=" in link:
+        link = link.split("&si=")[0]
+    
     print(f"[DABHound] Input URL: {link}")
     match_mode = args.mode or cfg.get("MATCH_MODE", "lenient")
     token = ensure_logged_in()
@@ -225,32 +234,47 @@ def main():
     # === SYNC DETECTION & TRACK PROCESSING ===
     existing_report = load_report(link)
     append_mode = False
-
+    existing_ids = set()
+    
     if existing_report:
-        existing_ids = set()
-        for t in existing_report.get("tracks", []):
-            if "spotify_id" in t:
-                existing_ids.add(t["spotify_id"])
-            elif "yt_id" in t:
-                existing_ids.add(t["yt_id"])
-            elif "isrc" in t and t["isrc"]:
-                existing_ids.add(t["isrc"])
-            else:
-                existing_ids.add(f"{t['artist']} - {t['title']}")
+        library_id = existing_report.get("library_id")
+    
+        if library_id and not library_exists(library_id):
+            print("[DABHound] Previous DAB library no longer exists. Cleaning up old report...")
 
-        tracks_to_process = []
-        for t in tracks:
-            track_id = t.get("spotify_id") or t.get("yt_id") or t.get("isrc") or f"{t['artist']} - {t['title']}"
-            if track_id not in existing_ids:
-                tracks_to_process.append(t)
-
-        skipped_count = len(tracks) - len(tracks_to_process)
-        if skipped_count:
-            print(f"[DABHound] {skipped_count} tracks already present in report; processing {len(tracks_to_process)} new tracks.")
+            # delete old report file(s)
+            from dabhounds.core.report import delete_report
+            delete_report(link)
+    
+            # reset state - treat as new conversion
+            existing_report = None
+            tracks_to_process = tracks[:]
+            print("[DABHound] Starting fresh conversion; processing all tracks.")
         else:
-            print("[DABHound] No previously-synced tracks found; processing all tracks.")
-
-        append_mode = True
+            # Library exists, check for duplicates
+            for t in existing_report.get("tracks", []):
+                if "spotify_id" in t:
+                    existing_ids.add(t["spotify_id"])
+                elif "yt_id" in t:
+                    existing_ids.add(t["yt_id"])
+                elif "isrc" in t and t["isrc"]:
+                    existing_ids.add(t["isrc"])
+                else:
+                    existing_ids.add(f"{t['artist']} - {t['title']}")
+    
+            tracks_to_process = []
+            for t in tracks:
+                track_id = t.get("spotify_id") or t.get("yt_id") or t.get("isrc") or f"{t['artist']} - {t['title']}"
+                if track_id not in existing_ids:
+                    tracks_to_process.append(t)
+    
+            skipped_count = len(tracks) - len(tracks_to_process)
+            if skipped_count:
+                print(f"[DABHound] {skipped_count} tracks already present in report; processing {len(tracks_to_process)} new tracks.")
+            else:
+                print("[DABHound] No previously-synced tracks found; processing all tracks.")
+    
+            append_mode = True
     else:
         tracks_to_process = tracks[:]
         print("[DABHound] No previously-synced tracks; processing all tracks.")
