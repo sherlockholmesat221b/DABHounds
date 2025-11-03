@@ -11,7 +11,9 @@ MASTER_CONFIG = {
     "DAB_API_BASE": "https://dabmusic.xyz/api",  # updated endpoint  
     "MATCH_MODE": "lenient",  
     "FUZZY_THRESHOLD": 80,  
-    "SPOTIFY_TOKEN_INFO": None  
+    "SPOTIFY_TOKEN_INFO": None,
+    "SHOW_TUI_OUTPUT": True,
+    "TUI_FALLBACK_TO_TERMINAL": True
 }  
   
 CONFIG_DIR = Path.home() / ".dabhound"  

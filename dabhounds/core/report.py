@@ -2,9 +2,13 @@
 
 import json
 import hashlib
+import os
 from pathlib import Path
 from datetime import datetime
 from typing import List, Dict
+
+from dabhounds.core.tui_report import show_tui_report, show_terminal_summary
+from dabhounds.core.auth import load_config
 
 CONFIG_DIR = Path.home() / ".dabhound"
 REPORT_DIR = CONFIG_DIR / "reports"
@@ -17,6 +21,21 @@ def generate_report(input_tracks: List[Dict], matched_tracks: List[Dict], match_
                     mode: str, library_name: str, library_id: str, source_url: str):
     """Generate both TXT (verbose) and JSON (minimal) reports using per-track unique IDs."""
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+    
+    # Build track data for reports
+    json_data = []
+    for i, original in enumerate(input_tracks):
+        match = match_results[i]
+        track_id = original.get("track_id") or f"{original['artist']} - {original['title']}"
+        json_data.append({
+            "artist": original["artist"],
+            "title": original["title"],
+            "isrc": original.get("isrc"),
+            "track_id": track_id,
+            "match_status": "FOUND" if match else "NOT FOUND",
+            "dab_track_id": match["id"] if match else None
+        })
+    
     # TXT report
     lines = [f"DABHounds Conversion Report — {timestamp}",
              f"Source URL: {source_url}",
@@ -45,18 +64,6 @@ def generate_report(input_tracks: List[Dict], matched_tracks: List[Dict], match_
 
     # JSON report
     json_path = REPORT_DIR / f"report_{md5_hash(source_url)}.json"
-    json_data = []
-    for i, original in enumerate(input_tracks):
-        match = match_results[i]
-        track_id = original.get("track_id") or f"{original['artist']} - {original['title']}"
-        json_data.append({
-            "artist": original["artist"],
-            "title": original["title"],
-            "isrc": original.get("isrc"),
-            "track_id": track_id,
-            "match_status": "FOUND" if match else "NOT FOUND",
-            "dab_track_id": match["id"] if match else None
-        })
     json_report = {
         "library_name": library_name,
         "library_id": library_id,
@@ -69,6 +76,23 @@ def generate_report(input_tracks: List[Dict], matched_tracks: List[Dict], match_
         json.dump(json_report, f, indent=2)
 
     print(f"[DABHound] Saved report to {txt_path} and {json_path}")
+    
+    # Show TUI or terminal summary based on config
+    cfg = load_config()
+    if cfg.get("SHOW_TUI_OUTPUT", True):
+        if cfg.get("TUI_FALLBACK_TO_TERMINAL", True):
+            # Try TUI, fall back to terminal summary if it fails
+            show_tui_report(json_data, library_name, library_id, source_url)
+        else:
+            # Only show TUI if available
+            try:
+                import curses
+                show_tui_report(json_data, library_name, library_id, source_url)
+            except ImportError:
+                print("[DABHound] TUI not available. Set TUI_FALLBACK_TO_TERMINAL=true in config to show terminal summary.")
+    else:
+        # Just show terminal summary of missing tracks
+        show_terminal_summary(json_data, library_name, library_id)
 
 
 def load_report(source_url: str) -> Dict:
@@ -148,17 +172,28 @@ def append_tracks_to_report(source_url: str, new_tracks: List[Dict], library_id:
         f.write("\n".join(lines))
 
     print(f"[DABHound] Appended {appended_count} new tracks to JSON report {json_path} and TXT report {txt_path}")
+    
+    # Show TUI or terminal summary
+    cfg = load_config()
+    if cfg.get("SHOW_TUI_OUTPUT", True):
+        if cfg.get("TUI_FALLBACK_TO_TERMINAL", True):
+            show_tui_report(report["tracks"], library_name, library_id, source_url)
+        else:
+            try:
+                import curses
+                show_tui_report(report["tracks"], library_name, library_id, source_url)
+            except ImportError:
+                print("[DABHound] TUI not available. Set TUI_FALLBACK_TO_TERMINAL=true in config to show terminal summary.")
+    else:
+        show_terminal_summary(report["tracks"], library_name, library_id)
 
 def delete_report(link: str):
     """Delete old report files (txt and json) associated with a link."""
-    md5_hash = hashlib.md5(link.encode("utf-8")).hexdigest()
-    reports_dir = Path("reports")
-    if not reports_dir.exists():
-        return
-
+    hash_val = md5_hash(link)
+    
     deleted_any = False
     for ext in [".json", ".txt"]:
-        for file in reports_dir.glob(f"{md5_hash}*{ext}"):
+        for file in REPORT_DIR.glob(f"*{hash_val}*{ext}"):
             try:
                 os.remove(file)
                 deleted_any = True
