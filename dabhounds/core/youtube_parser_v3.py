@@ -3,7 +3,7 @@ from typing import List, Dict, Optional, Tuple
 import re
 import yt_dlp
 import logging
-import sys, threading, itertools, time   # <-- add these
+import sys, threading, itertools, time
 
 # reuse your existing musicbrainz helper if present
 try:
@@ -40,8 +40,6 @@ class Spinner:
         if self.thread:
             self.thread.join()
 
-LOG = logging.getLogger("YouTubeParserV3")
-
 
 class YouTubeParserV3:
     DEFAULT_CONFIG = {
@@ -75,6 +73,7 @@ class YouTubeParserV3:
             "force_generic_extractor": False,
             "nocheckcertificate": True,
             "logger": None,                  # disable custom logger
+            "ignoreerrors": True,            # continue on errors
         }
         if self.config.get("yt_dlp_opts"):
             default_ydl.update(self.config["yt_dlp_opts"])
@@ -88,9 +87,16 @@ class YouTubeParserV3:
         """Return list of raw yt-dlp info dicts for each video entry."""
         spinner = Spinner("[DABHound] Parsing YouTube metadata")
         spinner.start()
+        
+        info = None
         try:
             with yt_dlp.YoutubeDL(self.ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=False)
+        except Exception as e:
+            spinner.stop()
+            LOG.error(f"Failed to extract YouTube info: {e}")
+            print(f"\n[DABHound] YouTube extraction error: {e}")
+            return []
         finally:
             spinner.stop()
 
@@ -99,18 +105,41 @@ class YouTubeParserV3:
 
         entries = info.get("entries") or [info]
         cleaned = []
-        for e in entries:
+        failed_count = 0
+        
+        for i, e in enumerate(entries):
             if not e:
+                failed_count += 1
+                LOG.warning(f"Entry {i+1} is None, skipping")
                 continue
-            cleaned.append({
-                "title": e.get("title", "").strip(),
-                "uploader": e.get("uploader", "").strip(),
-                "description": e.get("description", "") or "",
-                "duration": e.get("duration"),        # seconds or None
-                "id": e.get("id"),
-                "isrc": e.get("isrc"),
-                "raw": e,
-            })
+            
+            try:
+                entry_dict = {
+                    "title": e.get("title", "").strip(),
+                    "uploader": e.get("uploader", "").strip(),
+                    "description": e.get("description", "") or "",
+                    "duration": e.get("duration"),        # seconds or None
+                    "id": e.get("id"),
+                    "isrc": e.get("isrc"),
+                    "raw": e,
+                }
+                
+                # Validate that we have at least a title or ID
+                if not entry_dict["title"] and not entry_dict["id"]:
+                    failed_count += 1
+                    LOG.warning(f"Entry {i+1} has no title or ID, skipping")
+                    continue
+                
+                cleaned.append(entry_dict)
+            except Exception as e:
+                failed_count += 1
+                LOG.error(f"Failed to process entry {i+1}: {e}")
+                print(f"\n[DABHound] Skipping entry {i+1} due to error: {e}")
+                continue
+        
+        if failed_count > 0:
+            print(f"[DABHound] Warning: {failed_count} track(s) failed to extract and were skipped")
+        
         return cleaned
 
     # -----------------------
@@ -118,47 +147,52 @@ class YouTubeParserV3:
     # -----------------------
     def _split_into_chapters(self, raw_entry: Dict) -> List[Dict]:
         """Return list of chapters derived from description timestamps or fallback to single chapter."""
-        desc = raw_entry.get("description", "")
-        chapters = []
+        try:
+            desc = raw_entry.get("description", "")
+            chapters = []
 
-        # Try formal '00:00 - Title' lines first
-        for m in self.CHAPTER_LINE_RE.finditer(desc):
-            t = m.group("time").strip()
-            title = m.group("title").strip()
-            seconds = self._timestamp_to_seconds(t)
-            if seconds is not None:
-                chapters.append({"title": title, "start_sec": seconds})
+            # Try formal '00:00 - Title' lines first
+            for m in self.CHAPTER_LINE_RE.finditer(desc):
+                t = m.group("time").strip()
+                title = m.group("title").strip()
+                seconds = self._timestamp_to_seconds(t)
+                if seconds is not None:
+                    chapters.append({"title": title, "start_sec": seconds})
 
-        if not chapters:
-            # Try scanning any timestamps and grab following text to end-of-line
-            for m in self.TIMESTAMP_RE.finditer(desc):
-                # attempt to capture surrounding text on same line
-                span_start = m.start()
-                # get the whole line
-                line_start = desc.rfind("\n", 0, span_start) + 1
-                line_end = desc.find("\n", span_start)
-                if line_end == -1:
-                    line_end = len(desc)
-                line = desc[line_start:line_end].strip()
-                # strip the timestamp from line
-                # find first non-timestamp substring
-                cleaned_line = re.sub(r"^\s*(?:\d{1,2}:)?\d{1,2}:\d{2}\s*[-–—]?\s*", "", line)
-                ts_text = m.group(0)
-                seconds = self._timestamp_to_seconds(ts_text)
-                if seconds is not None and cleaned_line:
-                    chapters.append({"title": cleaned_line, "start_sec": seconds})
+            if not chapters:
+                # Try scanning any timestamps and grab following text to end-of-line
+                for m in self.TIMESTAMP_RE.finditer(desc):
+                    # attempt to capture surrounding text on same line
+                    span_start = m.start()
+                    # get the whole line
+                    line_start = desc.rfind("\n", 0, span_start) + 1
+                    line_end = desc.find("\n", span_start)
+                    if line_end == -1:
+                        line_end = len(desc)
+                    line = desc[line_start:line_end].strip()
+                    # strip the timestamp from line
+                    # find first non-timestamp substring
+                    cleaned_line = re.sub(r"^\s*(?:\d{1,2}:)?\d{1,2}:\d{2}\s*[-–—]?\s*", "", line)
+                    ts_text = m.group(0)
+                    seconds = self._timestamp_to_seconds(ts_text)
+                    if seconds is not None and cleaned_line:
+                        chapters.append({"title": cleaned_line, "start_sec": seconds})
 
-        # Deduplicate and sort
-        if chapters:
-            # remove duplicates keyed by start_sec
-            seen = {}
-            for c in chapters:
-                seen[c["start_sec"]] = c["title"]
-            chapters = [{"title": t, "start_sec": s} for s, t in sorted(seen.items())]
-            return chapters
+            # Deduplicate and sort
+            if chapters:
+                # remove duplicates keyed by start_sec
+                seen = {}
+                for c in chapters:
+                    seen[c["start_sec"]] = c["title"]
+                chapters = [{"title": t, "start_sec": s} for s, t in sorted(seen.items())]
+                return chapters
 
-        # fallback: entire video as one chapter using video title
-        return [{"title": raw_entry.get("title", ""), "start_sec": 0}]
+            # fallback: entire video as one chapter using video title
+            return [{"title": raw_entry.get("title", "Unknown"), "start_sec": 0}]
+        except Exception as e:
+            LOG.error(f"Chapter splitting failed: {e}")
+            # Return single chapter as fallback
+            return [{"title": raw_entry.get("title", "Unknown"), "start_sec": 0}]
 
     def _timestamp_to_seconds(self, ts: str) -> Optional[int]:
         ts = ts.strip()
@@ -235,40 +269,44 @@ class YouTubeParserV3:
     # STAGE 4: Metadata enrichment (opt)
     # ------------------------------------
     def _enrich_metadata(self, track: Dict) -> Dict:
-        # If isrc present — short-circuit
-        if track.get("isrc"):
-            track.setdefault("note", "")
-            track["note"] += "isrc_from_source;"
-            track["enrichment_source"] = "source_isrc"
-            track["enriched"] = True
-            return track
+        try:
+            # If isrc present — short-circuit
+            if track.get("isrc"):
+                track.setdefault("note", "")
+                track["note"] += "isrc_from_source;"
+                track["enrichment_source"] = "source_isrc"
+                track["enriched"] = True
+                return track
 
-        # MusicBrainz enrichment
-        if self.config.get("use_musicbrainz") and resolve_track_metadata:
-            artist = track.get("artist") or ""
-            title = track.get("title") or ""
-            if artist and title:
-                try:
-                    mb = resolve_track_metadata(title, artist)
-                    if mb:
-                        # update fields if present
-                        if mb.get("title"):
-                            track["title"] = mb["title"]
-                        if mb.get("artist"):
-                            track["artist"] = mb["artist"]
-                        if mb.get("isrc"):
-                            track["isrc"] = mb["isrc"]
-                        if mb.get("duration_ms") and not track.get("duration_sec"):
-                            track["duration_sec"] = int(mb["duration_ms"] / 1000)
-                        track.setdefault("note", "")
-                        track["note"] += "musicbrainz_match;"
-                        track["enrichment_source"] = "musicbrainz"
-                        track["enriched"] = True
-                except Exception as e:
-                    LOG.debug("MB enrichment failed: %s", e)
+            # MusicBrainz enrichment
+            if self.config.get("use_musicbrainz") and resolve_track_metadata:
+                artist = track.get("artist") or ""
+                title = track.get("title") or ""
+                if artist and title:
+                    try:
+                        mb = resolve_track_metadata(title, artist)
+                        if mb:
+                            # update fields if present
+                            if mb.get("title"):
+                                track["title"] = mb["title"]
+                            if mb.get("artist"):
+                                track["artist"] = mb["artist"]
+                            if mb.get("isrc"):
+                                track["isrc"] = mb["isrc"]
+                            if mb.get("duration_ms") and not track.get("duration_sec"):
+                                track["duration_sec"] = int(mb["duration_ms"] / 1000)
+                            track.setdefault("note", "")
+                            track["note"] += "musicbrainz_match;"
+                            track["enrichment_source"] = "musicbrainz"
+                            track["enriched"] = True
+                    except Exception as e:
+                        LOG.debug("MB enrichment failed: %s", e)
 
-        # Qobuz placeholder (not implemented) — left intentionally blank for future
-        # - If use_qobuz: call Qobuz API similarly, set enrichment_source='qobuz'
+            # Qobuz placeholder (not implemented) — left intentionally blank for future
+            # - If use_qobuz: call Qobuz API similarly, set enrichment_source='qobuz'
+        except Exception as e:
+            LOG.error(f"Metadata enrichment failed: {e}")
+        
         return track
 
     # ------------------------------------
@@ -322,47 +360,68 @@ class YouTubeParserV3:
     # ------------------------------------
     def parse(self, url: str) -> List[Dict]:
         raw_entries = self._extract_raw_entries(url)
+        
+        if not raw_entries:
+            print("[DABHound] No tracks could be extracted from YouTube URL")
+            return []
+        
         all_tracks: List[Dict] = []
+        failed_tracks = 0
 
         for raw in raw_entries:
-            chapters = [{"title": raw["title"], "start_sec": 0}]
-            if self.config.get("split_chapters"):
-                chapters = self._split_into_chapters(raw)
+            try:
+                chapters = [{"title": raw["title"], "start_sec": 0}]
+                if self.config.get("split_chapters"):
+                    chapters = self._split_into_chapters(raw)
 
-            for chap in chapters:
-                # choose initial artist/title
-                if self.config.get("normalize_title"):
-                    parsed_artist, parsed_title = self._normalize_title(chap["title"])
-                    # if normalization failed to find artist, fallback to uploader
-                    if not parsed_artist:
-                        parsed_artist = raw.get("uploader", "") or ""
-                else:
-                    parsed_artist = raw.get("uploader", "") or ""
-                    parsed_title = chap["title"]
+                for chap in chapters:
+                    try:
+                        # choose initial artist/title
+                        if self.config.get("normalize_title"):
+                            parsed_artist, parsed_title = self._normalize_title(chap["title"])
+                            # if normalization failed to find artist, fallback to uploader
+                            if not parsed_artist:
+                                parsed_artist = raw.get("uploader", "") or ""
+                        else:
+                            parsed_artist = raw.get("uploader", "") or ""
+                            parsed_title = chap["title"]
 
-                base = {
-                    "title": parsed_title,
-                    "artist": parsed_artist,
-                    "duration_sec": raw.get("duration"),
-                    "isrc": raw.get("isrc"),
-                    "note": "",
-                }
+                        base = {
+                            "title": parsed_title,
+                            "artist": parsed_artist,
+                            "duration_sec": raw.get("duration"),
+                            "isrc": raw.get("isrc"),
+                            "note": "",
+                        }
 
-                # enrichment
-                base = self._enrich_metadata(base)
+                        # enrichment
+                        base = self._enrich_metadata(base)
 
-                # build final object and score it
-                track_obj = self._build_track_object(base, raw, chap)
-                track_obj["confidence"] = self._score_track(track_obj)
+                        # build final object and score it
+                        track_obj = self._build_track_object(base, raw, chap)
+                        track_obj["confidence"] = self._score_track(track_obj)
 
-                # keep provenance for debugging
-                track_obj["_provenance"] = {
-                    "raw_id": raw.get("id"),
-                    "chapter_title": chap.get("title"),
-                    "enrichment_source": base.get("enrichment_source"),
-                }
+                        # keep provenance for debugging
+                        track_obj["_provenance"] = {
+                            "raw_id": raw.get("id"),
+                            "chapter_title": chap.get("title"),
+                            "enrichment_source": base.get("enrichment_source"),
+                        }
 
-                all_tracks.append(track_obj)
+                        all_tracks.append(track_obj)
+                    except Exception as e:
+                        failed_tracks += 1
+                        LOG.error(f"Failed to process chapter '{chap.get('title', 'Unknown')}': {e}")
+                        print(f"\n[DABHound] Skipping track due to error: {e}")
+                        continue
+            except Exception as e:
+                failed_tracks += 1
+                LOG.error(f"Failed to process video '{raw.get('title', 'Unknown')}': {e}")
+                print(f"\n[DABHound] Skipping video due to error: {e}")
+                continue
+
+        if failed_tracks > 0:
+            print(f"[DABHound] Warning: {failed_tracks} track(s) failed processing and were skipped")
 
         return all_tracks
 
