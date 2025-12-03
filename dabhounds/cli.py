@@ -190,6 +190,10 @@ def main():
     token = ensure_logged_in()
 
     # === TRACK FETCHING ===
+    library_name_from_spotify = None
+    library_description_from_spotify = None
+    library_name_from_youtube = None
+    library_description_from_youtube = None
     tracks = []
     if is_spotify_url(link):
         print("[DABHound] Detected Spotify link")
@@ -216,7 +220,12 @@ def main():
     elif is_youtube_url(link):
         print("[DABHound] Detected YouTube link")
         parser_y = YouTubeParserV3(cfg.get("YOUTUBE", {}))
-        tracks = parser_y.parse(link)
+        yt_data = parser_y.parse(link)
+        
+        tracks = yt_data["tracks"]
+        library_name_from_youtube = yt_data.get("playlist_title")
+        library_description_from_youtube = yt_data.get("playlist_description")
+        
         for t in tracks:
             if "safe_title" in t:
                 t["title"] = t["safe_title"]
@@ -326,9 +335,9 @@ def main():
                                            f"DABHounds {datetime.now().strftime('%Y-%m-%d %H:%M')}")
             print(f"[DABHound] Adding new tracks to existing library: {library_name}")
         else:
-            # Use Spotify name and description if available, else fallback
-            library_name = library_name_from_spotify or f"DABHounds {datetime.now().strftime('%Y-%m-%d %H:%M')}"
-            library_description = library_description_from_spotify or "Created by DABHounds"
+            # Use Spotify/YouTube name and description if available, else fallback
+            library_name = library_name_from_spotify or library_name_from_youtube or f"DABHounds {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+            library_description = library_description_from_spotify or library_description_from_youtube or "Created by DABHounds"
             print(f"[DABHound] Creating new library: {library_name}")
             library_id = create_library(library_name, description=library_description, is_public=True)
             print(f"[DABHound] Library created. ID: {library_id}")

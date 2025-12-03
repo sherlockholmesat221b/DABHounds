@@ -358,13 +358,29 @@ class YouTubeParserV3:
     # ------------------------------------
     # MAIN: parse(url)
     # ------------------------------------
-    def parse(self, url: str) -> List[Dict]:
+    def parse(self, url: str) -> Dict:
+        """
+        Returns dict:
+          {
+            "tracks": [...],
+            "playlist_title": str,
+            "playlist_description": str
+          }
+        """
         raw_entries = self._extract_raw_entries(url)
-        
+
+        playlist_title = None
+        playlist_description = None
+
         if not raw_entries:
             print("[DABHound] No tracks could be extracted from YouTube URL")
-            return []
-        
+            return {"tracks": [], "playlist_title": playlist_title, "playlist_description": playlist_description}
+
+        # Attempt to get playlist-level metadata from the first entry
+        info = raw_entries[0].get("raw", {})
+        playlist_title = info.get("playlist_title") or info.get("title") or None
+        playlist_description = info.get("playlist_description") or info.get("description") or None
+
         all_tracks: List[Dict] = []
         failed_tracks = 0
 
@@ -376,10 +392,8 @@ class YouTubeParserV3:
 
                 for chap in chapters:
                     try:
-                        # choose initial artist/title
                         if self.config.get("normalize_title"):
                             parsed_artist, parsed_title = self._normalize_title(chap["title"])
-                            # if normalization failed to find artist, fallback to uploader
                             if not parsed_artist:
                                 parsed_artist = raw.get("uploader", "") or ""
                         else:
@@ -394,20 +408,15 @@ class YouTubeParserV3:
                             "note": "",
                         }
 
-                        # enrichment
                         base = self._enrich_metadata(base)
-
-                        # build final object and score it
                         track_obj = self._build_track_object(base, raw, chap)
                         track_obj["confidence"] = self._score_track(track_obj)
-
-                        # keep provenance for debugging
                         track_obj["_provenance"] = {
                             "raw_id": raw.get("id"),
                             "chapter_title": chap.get("title"),
                             "enrichment_source": base.get("enrichment_source"),
                         }
-
+    
                         all_tracks.append(track_obj)
                     except Exception as e:
                         failed_tracks += 1
@@ -422,8 +431,12 @@ class YouTubeParserV3:
 
         if failed_tracks > 0:
             print(f"[DABHound] Warning: {failed_tracks} track(s) failed processing and were skipped")
-
-        return all_tracks
+    
+        return {
+            "tracks": all_tracks,
+            "playlist_title": playlist_title,
+            "playlist_description": playlist_description,
+        }
 
 
 # small self-test when run directly
