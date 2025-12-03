@@ -77,10 +77,16 @@ Special Thanks To: superadmin0, uimaxbai, joehacks, Squid.WTF
 
 def load_version():
     try:
-        with open("VERSION", "r") as f:
-            return f.read().strip()
-    except FileNotFoundError:
-        return "0.0.0"
+        # This works after pip installation?
+        from importlib.metadata import version, PackageNotFoundError
+        return version("dabhounds")
+    except (ImportError, PackageNotFoundError):
+        try:
+            # fallback for development (read __version__ directly)
+            from . import __version__
+            return __version__
+        except ImportError:
+            return "0.0.0"
 
 VERSION_URL = "https://raw.githubusercontent.com/sherlockholmesat221b/DABHounds/main/VERSION"
 

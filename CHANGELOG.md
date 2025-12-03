@@ -67,3 +67,13 @@ All notable changes to this project will be documented in this file.
 ### Added
 - Added [TUI based (with fallback to terminal) interactive report output with option to save CSV of all tracks and missed tracks](https://github.com/sherlockholmesat221b/DABHounds/issues/10).
 - Added [check for deleted old library](https://github.com/sherlockholmesat221b/DABHounds/issues/9) to prevent syncing of deleted library.
+
+
+## [2.1.1] - 2025-12-03
+## Fixed
+- Fixed `dabhounds --version`.
+
+## Changed
+- Replaced [Squid.WTF](https://qobuz.squid.wtf/) qobuz API for ISRC conversion in `qobuz.py` to the official Qobuz API.
+- [DABHounds now uses source title and description instead of old `DABHounds...`.](https://github.com/sherlockholmesat221b/DABHounds/issues/14).
+
