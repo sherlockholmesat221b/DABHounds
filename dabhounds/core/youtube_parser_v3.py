@@ -4,12 +4,7 @@ import re
 import yt_dlp
 import logging
 import sys, threading, itertools, time
-
-# reuse your existing musicbrainz helper if present
-try:
-    from dabhounds.core.musicbrainz import resolve_track_metadata
-except Exception:
-    resolve_track_metadata = None
+from dabhounds.core.musicbrainz import resolve_track_metadata
 
 LOG = logging.getLogger("YouTubeParserV3")
 
@@ -83,11 +78,15 @@ class YouTubeParserV3:
     # -----------------------
     # STAGE 1: Raw extraction
     # -----------------------
-    def _extract_raw_entries(self, url: str) -> List[Dict]:
-        """Return list of raw yt-dlp info dicts for each video entry."""
+    def _extract_raw_entries(self, url: str) -> Tuple[List[Dict], Optional[Dict]]:
+        """
+        Return tuple:
+          - list of raw yt-dlp info dicts for each video entry
+          - playlist-level info dict (or None if not a playlist)
+        """
         spinner = Spinner("[DABHound] Parsing YouTube metadata")
         spinner.start()
-        
+
         info = None
         try:
             with yt_dlp.YoutubeDL(self.ydl_opts) as ydl:
@@ -96,23 +95,34 @@ class YouTubeParserV3:
             spinner.stop()
             LOG.error(f"Failed to extract YouTube info: {e}")
             print(f"\n[DABHound] YouTube extraction error: {e}")
-            return []
+            return [], None
         finally:
             spinner.stop()
 
         if not info:
-            return []
+            return [], None
 
-        entries = info.get("entries") or [info]
+        # Separate playlist-level metadata
+        playlist_info = None
+        entries = []
+
+        if info.get("entries"):
+            # It's a playlist
+            playlist_info = info  # root info has playlist metadata
+            entries = info.get("entries", [])
+        else:
+            # Single video
+            entries = [info]
+
         cleaned = []
         failed_count = 0
-        
+
         for i, e in enumerate(entries):
             if not e:
                 failed_count += 1
                 LOG.warning(f"Entry {i+1} is None, skipping")
                 continue
-            
+
             try:
                 entry_dict = {
                     "title": e.get("title", "").strip(),
@@ -123,24 +133,24 @@ class YouTubeParserV3:
                     "isrc": e.get("isrc"),
                     "raw": e,
                 }
-                
+
                 # Validate that we have at least a title or ID
                 if not entry_dict["title"] and not entry_dict["id"]:
                     failed_count += 1
                     LOG.warning(f"Entry {i+1} has no title or ID, skipping")
                     continue
-                
+
                 cleaned.append(entry_dict)
             except Exception as e:
                 failed_count += 1
                 LOG.error(f"Failed to process entry {i+1}: {e}")
                 print(f"\n[DABHound] Skipping entry {i+1} due to error: {e}")
                 continue
-        
+
         if failed_count > 0:
             print(f"[DABHound] Warning: {failed_count} track(s) failed to extract and were skipped")
-        
-        return cleaned
+
+        return cleaned, playlist_info
 
     # -----------------------
     # STAGE 2: Chapter splitting
@@ -220,8 +230,8 @@ class YouTubeParserV3:
         """
         t = raw_title.strip()
         # remove common noise
-        t = re.sub(r"\[(official video|official audio|audio|video|lyrics)\]", "", t, flags=re.I)
-        t = re.sub(r"\((official video|official audio|audio|video|lyrics|HD|Remastered|Remaster(ed)?)\)", "", t, flags=re.I)
+        t = re.sub(r"(official video|official audio|audio|video|lyrics)", "", t, flags=re.I)
+        t = re.sub(r"(official video|official audio|audio|video|lyrics|HD|Remastered|Remaster(ed)?)", "", t, flags=re.I)
         t = re.sub(r"\bfeat\.?\b", "ft.", t, flags=re.I)
         t = re.sub(r"\s{2,}", " ", t).strip()
 
@@ -306,7 +316,7 @@ class YouTubeParserV3:
             # - If use_qobuz: call Qobuz API similarly, set enrichment_source='qobuz'
         except Exception as e:
             LOG.error(f"Metadata enrichment failed: {e}")
-        
+
         return track
 
     # ------------------------------------
@@ -359,28 +369,19 @@ class YouTubeParserV3:
     # MAIN: parse(url)
     # ------------------------------------
     def parse(self, url: str) -> Dict:
-        """
-        Returns dict:
-          {
-            "tracks": [...],
-            "playlist_title": str,
-            "playlist_description": str
-          }
-        """
-        raw_entries = self._extract_raw_entries(url)
+        raw_entries, playlist_info = self._extract_raw_entries(url)
 
         playlist_title = None
         playlist_description = None
 
+        if playlist_info:
+            playlist_title = playlist_info.get("title") or playlist_info.get("playlist_title")
+            playlist_description = playlist_info.get("description") or playlist_info.get("playlist_description")
+
         if not raw_entries:
             print("[DABHound] No tracks could be extracted from YouTube URL")
             return {"tracks": [], "playlist_title": playlist_title, "playlist_description": playlist_description}
-
-        # Attempt to get playlist-level metadata from the first entry
-        info = raw_entries[0].get("raw", {})
-        playlist_title = info.get("playlist_title") or info.get("title") or None
-        playlist_description = info.get("playlist_description") or info.get("description") or None
-
+  
         all_tracks: List[Dict] = []
         failed_tracks = 0
 
@@ -416,7 +417,7 @@ class YouTubeParserV3:
                             "chapter_title": chap.get("title"),
                             "enrichment_source": base.get("enrichment_source"),
                         }
-    
+
                         all_tracks.append(track_obj)
                     except Exception as e:
                         failed_tracks += 1
@@ -431,7 +432,7 @@ class YouTubeParserV3:
 
         if failed_tracks > 0:
             print(f"[DABHound] Warning: {failed_tracks} track(s) failed processing and were skipped")
-    
+
         return {
             "tracks": all_tracks,
             "playlist_title": playlist_title,
@@ -444,8 +445,19 @@ if __name__ == "__main__":
     import json, sys
     logging.basicConfig(level=logging.DEBUG)
     if len(sys.argv) < 2:
-        print("usage: python youtube_parser_v3.py <youtube-url>")
+        print("Usage: python youtube_parser_v3.py <YouTube URL>")
         sys.exit(1)
-    p = YouTubeParserV3()
-    res = p.parse(sys.argv[1])
-    print(json.dumps(res, indent=2))
+
+    url = sys.argv[1]
+    parser = YouTubeParserV3()
+
+    # Extract raw info from yt-dlp
+    raw_entries, playlist_info = parser._extract_raw_entries(url)
+
+    # Dump JSON exactly as obtained from yt-dlp
+    output = {
+        "playlist_info": playlist_info,
+        "raw_entries": [e.get("raw") for e in raw_entries if e.get("raw")],
+    }
+
+    print(json.dumps(output, indent=2, ensure_ascii=False))
