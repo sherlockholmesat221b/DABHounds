@@ -199,12 +199,18 @@ def main():
                 client_secret=cfg.get("SPOTIPY_CLIENT_SECRET")
             ))
             fetcher = SpotifyFetcher(public_sp)
-            tracks = fetcher.extract_tracks(link)
+            spotify_data = fetcher.extract_tracks(link)
         except Exception:
             print("[DABHound] Private/restricted playlist. Logging in...")
             sp = get_spotify_client()
             fetcher = SpotifyFetcher(sp)
-            tracks = fetcher.extract_tracks(link)
+            spotify_data = fetcher.extract_tracks(link)
+    
+        # Unpack
+        tracks = spotify_data.get("tracks", [])
+        library_name_from_spotify = spotify_data.get("name")
+        library_description_from_spotify = spotify_data.get("description")
+    
         for t in tracks:
             t["source_url"] = link
     elif is_youtube_url(link):
@@ -316,12 +322,15 @@ def main():
     if matched_tracks:
         if append_mode and existing_report:
             library_id = existing_report.get("library_id", "(none)")
-            library_name = existing_report.get("library_name", f"DABHounds {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+            library_name = existing_report.get("library_name", 
+                                           f"DABHounds {datetime.now().strftime('%Y-%m-%d %H:%M')}")
             print(f"[DABHound] Adding new tracks to existing library: {library_name}")
         else:
-            library_name = f"DABHounds {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+            # Use Spotify name and description if available, else fallback
+            library_name = library_name_from_spotify or f"DABHounds {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+            library_description = library_description_from_spotify or "Created by DABHounds"
             print(f"[DABHound] Creating new library: {library_name}")
-            library_id = create_library(library_name, description="Created by DABHounds", is_public=True)
+            library_id = create_library(library_name, description=library_description, is_public=True)
             print(f"[DABHound] Library created. ID: {library_id}")
 
         if matched_tracks:
