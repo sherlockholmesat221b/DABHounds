@@ -2,7 +2,7 @@
 
 import musicbrainzngs
 
-musicbrainzngs.set_useragent("DABHounds", "1.0", "https://github.com/sherlockholmesat221b/DABHounds")
+musicbrainzngs.set_useragent("DABHounds", "2.1.1", "https://github.com/sherlockholmesat221b/DABHounds")
 
 def resolve_track_metadata(title: str, artist: str) -> dict | None:
     """Attempt to resolve canonical metadata using MusicBrainz."""

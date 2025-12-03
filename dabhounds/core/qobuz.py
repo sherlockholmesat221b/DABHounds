@@ -2,7 +2,7 @@
 import requests
 
 QOBUZ_API = "https://www.qobuz.com/api.json/0.2/track/search"
-APP_ID = "798273057"  # your app_id here
+APP_ID = "798273057"
 
 def get_qobuz_ids_for_isrc(isrc: str):
     """
