@@ -3,12 +3,15 @@ name = "dabhounds"
 version = "2.1.1"
 description = "Convert Spotify and YouTube playlists into DAB libraries"
 readme = "README.md"
-license = "MIT"
+license = "AGPL-3.0-or-later"
 license-files = ["LICENSE"]
+
 authors = [
     { name="sherlockholmesat221b", email="sherlockholmesat221b@proton.me" }
 ]
+
 requires-python = ">=3.9"
+
 dependencies = [
     "requests>=2.31.0",
     "spotipy>=2.22.0",
@@ -16,6 +19,11 @@ dependencies = [
     "musicbrainzngs>=0.7.1",
     "rapidfuzz>=3.0.0"
 ]
+
+[project.urls]
+Homepage = "https://github.com/sherlockholmesat221b/DABHounds"
+Source = "https://github.com/sherlockholmesat221b/DABHounds"
+Issues = "https://github.com/sherlockholmesat221b/DABHounds/issues"
 
 [project.scripts]
 dabhounds = "dabhounds.cli:main"
