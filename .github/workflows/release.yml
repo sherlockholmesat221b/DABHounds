@@ -29,7 +29,7 @@ jobs:
 
       - name: Update version file
         run: |
-          echo "__version__ = '${VERSION}'" > my_package/__version__.py
+          echo "__version__ = '${VERSION}'" > dabhounds/__version__.py
 
       - name: Set up Python
         uses: actions/setup-python@v4
