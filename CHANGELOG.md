@@ -51,7 +51,7 @@ All notable changes to this project will be documented in this file.
 - DAB API rate limit issue while making library. Apparently, there was a rate limiting on DAB (15 requests per 10 seconds), which I was totally unaware of. Updated dabhounds/core/library.py. FUCK YOU SUPERADMIN0, YOU COULD HAVE ATLEAST INFORMED ME.
 - Also updated dab.py to respect the rate limit.
 
-## Added
+### Added
 - Added a playlist sync feature.
 
 
@@ -70,10 +70,10 @@ All notable changes to this project will be documented in this file.
 
 
 ## [2.1.1] - 2025-12-03
-## Fixed
+### Fixed
 - Fixed `dabhounds --version`.
 
-## Changed
+### Changed
 - Replaced [Squid.WTF](https://qobuz.squid.wtf/) qobuz API for ISRC conversion in `qobuz.py` to the official Qobuz API.
 - [DABHounds now uses source title and description instead of old `DABHounds...`.](https://github.com/sherlockholmesat221b/DABHounds/issues/14).
 
