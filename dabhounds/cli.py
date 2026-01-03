@@ -1,36 +1,35 @@
 # dabhounds/cli.py
 
 import argparse
-import os
-import subprocess
 import sys
+import os
 from datetime import datetime
 from pathlib import Path
-
+import subprocess
 import requests
+
 from spotipy import Spotify
 from spotipy.oauth2 import SpotifyClientCredentials
 
-from dabhounds.core.auth import ensure_logged_in, load_config, login, save_config
-from dabhounds.core.dab import match_track
-from dabhounds.core.library import add_tracks_to_library, create_library, library_exists
-from dabhounds.core.report import append_tracks_to_report, generate_report, load_report
 from dabhounds.core.spotify import SpotifyFetcher
-from dabhounds.core.spotify_auth import get_spotify_client, spotify_logout
 from dabhounds.core.youtube_parser_v3 import YouTubeParserV3
+from dabhounds.core.dab import match_track
+from dabhounds.core.library import create_library, add_tracks_to_library, library_exists
+from dabhounds.core.report import generate_report, load_report, append_tracks_to_report
+from dabhounds.core.auth import login, ensure_logged_in, load_config, save_config
+from dabhounds.core.spotify_auth import get_spotify_client, spotify_logout
 
 # Load configuration
 cfg = load_config()
 
 ASCII_ART = r"""
-  _____          ____  _    _                       _
- |  __ \   /\   |  _ \| |  | |                     | |
- | |  | | /  \  | |_) | |__| | ___  _   _ _ __   __| |___
- | |  | |/ /\ \ |  _ <|  __  |/ _ \| | | | '_ \ / _` / __|
- | |__| / ____ \| |_) | |  | | (_) | |_| | | | | (_| \__ \
- |_____/_/    \_\____/|_|  |_|\___/ \__,_|_| |_|\__,_|___/
+  _____          ____  _    _                       _         
+ |  __ \   /\   |  _ \| |  | |                     | |        
+ | |  | | /  \  | |_) | |__| | ___  _   _ _ __   __| |___     
+ | |  | |/ /\ \ |  _ <|  __  |/ _ \| | | | '_ \ / _` / __|    
+ | |__| / ____ \| |_) | |  | | (_) | |_| | | | | (_| \__ \    
+ |_____/_/    \_\____/|_|  |_|\___/ \__,_|_| |_|\__,_|___/    
 """
-
 
 def show_main_menu():
     print(ASCII_ART)
@@ -65,7 +64,6 @@ Available Commands:
       → Show credits
 """)
 
-
 def show_credits():
     print(ASCII_ART)
     print("""
@@ -77,27 +75,20 @@ Developed by: sherlockholmesat221b
 Special Thanks To: superadmin0, uimaxbai, joehacks, Squid.WTF
 """)
 
-
 def load_version():
     try:
         # This works after pip installation?
-        from importlib.metadata import PackageNotFoundError, version
-
+        from importlib.metadata import version, PackageNotFoundError
         return version("dabhounds")
     except (ImportError, PackageNotFoundError):
         try:
             # fallback for development (read __version__ directly)
             from . import __version__
-
             return __version__
         except ImportError:
             return "0.0.0"
 
-
-VERSION_URL = (
-    "https://raw.githubusercontent.com/sherlockholmesat221b/DABHounds/main/VERSION"
-)
-
+VERSION_URL = "https://raw.githubusercontent.com/sherlockholmesat221b/DABHounds/main/VERSION"
 
 def check_latest_version(local_version):
     try:
@@ -105,39 +96,30 @@ def check_latest_version(local_version):
         r.raise_for_status()
         remote_version = r.text.strip()
         if remote_version != local_version:
-            print(
-                f"[DABHound] New version available: {remote_version} (current: {local_version}). Run --update to update."
-            )
+            print(f"[DABHound] New version available: {remote_version} (current: {local_version}). Run --update to update.")
         else:
             print(f"[DABHound] You are running the latest version ({local_version}).")
     except Exception as e:
         print(f"[DABHound] Could not check for updates: {e}")
 
-
 def perform_update():
     try:
         print("[DABHound] Updating via pip...")
-        subprocess.check_call(
-            [sys.executable, "-m", "pip", "install", "--upgrade", "dabhounds"]
-        )
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "--upgrade", "dabhounds"])
         print("[DABHound] Update complete. Please restart the tool.")
     except subprocess.CalledProcessError as e:
         print(f"[DABHound] Update failed: {e}")
 
-
 def is_spotify_url(url: str) -> bool:
     return "open.spotify.com" in url
 
-
 def is_youtube_url(url: str) -> bool:
     return "youtube.com" in url or "youtu.be" in url
-
 
 def is_isrc_code(value: str) -> bool:
     if len(value) != 12:
         return False
     return value[:2].isalpha() and value[:2].isupper() and value[2:].isalnum()
-
 
 def normalize_spotify_url(url: str) -> str:
     # Strip common tracking parameters.
@@ -146,7 +128,6 @@ def normalize_spotify_url(url: str) -> str:
     if "&si=" in url:
         url = url.split("&si=")[0]
     return url
-
 
 def load_links_from_file(path: Path) -> list:
     links = []
@@ -157,7 +138,6 @@ def load_links_from_file(path: Path) -> list:
                 continue
             links.append(line)
     return links
-
 
 def logout():
     cfg = load_config()
@@ -170,17 +150,10 @@ def logout():
     spotify_logout()
     print("[DABHound] Logged out and cleared credentials.")
 
-
 def main():
-    parser = argparse.ArgumentParser(
-        description="DABHounds: Convert Spotify or YouTube to DAB libraries"
-    )
-    parser.add_argument(
-        "link",
-        nargs="?",
-        help="Spotify / YouTube / ISRC input, or a text file containing them",
-    )
-    parser.add_argument("--mode", choices=["strict", "lenient", "manual"], default=None)
+    parser = argparse.ArgumentParser(description="DABHounds: Convert Spotify or YouTube to DAB libraries")
+    parser.add_argument("link", nargs="?", help="Spotify/YouTube/ISRC input or text file with Spotify/YouTube/ISRC entries")
+    parser.add_argument("--mode", choices=["strict","lenient","manual"], default=None)
     parser.add_argument("--version", action="store_true")
     parser.add_argument("--update", action="store_true")
     parser.add_argument("--login", action="store_true")
@@ -188,9 +161,7 @@ def main():
     parser.add_argument("--spotify-login", action="store_true")
     parser.add_argument("--credits", action="store_true")
     parser.add_argument("--threshold", type=int, help="Override fuzzy threshold 0-100")
-    parser.add_argument(
-        "--library-name", help="Override DAB library name (useful for file input)"
-    )
+    parser.add_argument("--library-name", help="Override DAB library name (useful for file input)")
     args = parser.parse_args()
 
     fuzzy_threshold = args.threshold or cfg.get("FUZZY_THRESHOLD", 80)
@@ -209,11 +180,7 @@ def main():
         sys.exit(0)
 
     if args.update:
-        confirm = (
-            input("This will upgrade DABHounds via pip. Continue? (y/N): ")
-            .strip()
-            .lower()
-        )
+        confirm = input("This will upgrade DABHounds via pip. Continue? (y/N): ").strip().lower()
         if confirm == "y":
             perform_update()
         sys.exit(0)
@@ -230,9 +197,7 @@ def main():
 
     if args.spotify_login:
         sp = get_spotify_client()
-        print(
-            f"[DABHound] Spotify login successful as: {sp.current_user()['display_name']}"
-        )
+        print(f"[DABHound] Spotify login successful as: {sp.current_user()['display_name']}")
         sys.exit(0)
 
     if not args.link:
@@ -247,7 +212,7 @@ def main():
         link = str(file_input)
     else:
         link = normalize_spotify_url(input_arg)
-
+    
     print(f"[DABHound] Input URL: {link}")
     match_mode = args.mode or cfg.get("MATCH_MODE", "lenient")
     if file_input and args.mode is None:
@@ -270,12 +235,10 @@ def main():
         normalized_links = [normalize_spotify_url(l) for l in raw_links]
 
         try:
-            public_sp = Spotify(
-                auth_manager=SpotifyClientCredentials(
-                    client_id=cfg.get("SPOTIPY_CLIENT_ID"),
-                    client_secret=cfg.get("SPOTIPY_CLIENT_SECRET"),
-                )
-            )
+            public_sp = Spotify(auth_manager=SpotifyClientCredentials(
+                client_id=cfg.get("SPOTIPY_CLIENT_ID"),
+                client_secret=cfg.get("SPOTIPY_CLIENT_SECRET")
+            ))
             fetcher = SpotifyFetcher(public_sp)
         except Exception:
             fetcher = None
@@ -319,31 +282,25 @@ def main():
                 continue
 
             if is_isrc_code(url):
-                tracks.append(
-                    {
-                        "title": url,
-                        "artist": "",
-                        "isrc": url,
-                        "source_url": link,
-                    }
-                )
+                tracks.append({
+                    "title": url,
+                    "artist": "",
+                    "isrc": url,
+                    "source_url": link,
+                })
                 continue
 
             print(f"[DABHound] Skipping unsupported entry in file: {url}")
 
         library_name_from_spotify = args.library_name or "DABmusic"
-        library_description_from_spotify = (
-            f"Created by DABHounds from {file_input.name}"
-        )
+        library_description_from_spotify = f"Created by DABHounds from {file_input.name}"
     elif is_spotify_url(link):
         print("[DABHound] Detected Spotify link")
         try:
-            public_sp = Spotify(
-                auth_manager=SpotifyClientCredentials(
-                    client_id=cfg.get("SPOTIPY_CLIENT_ID"),
-                    client_secret=cfg.get("SPOTIPY_CLIENT_SECRET"),
-                )
-            )
+            public_sp = Spotify(auth_manager=SpotifyClientCredentials(
+                client_id=cfg.get("SPOTIPY_CLIENT_ID"),
+                client_secret=cfg.get("SPOTIPY_CLIENT_SECRET")
+            ))
             fetcher = SpotifyFetcher(public_sp)
             spotify_data = fetcher.extract_tracks(link)
         except Exception:
@@ -351,23 +308,23 @@ def main():
             sp = get_spotify_client()
             fetcher = SpotifyFetcher(sp)
             spotify_data = fetcher.extract_tracks(link)
-
+    
         # Unpack
         tracks = spotify_data.get("tracks", [])
         library_name_from_spotify = spotify_data.get("name")
         library_description_from_spotify = spotify_data.get("description")
-
+    
         for t in tracks:
             t["source_url"] = link
     elif is_youtube_url(link):
         print("[DABHound] Detected YouTube link")
         parser_y = YouTubeParserV3(cfg.get("YOUTUBE", {}))
         yt_data = parser_y.parse(link)
-
+        
         tracks = yt_data["tracks"]
         library_name_from_youtube = yt_data.get("playlist_title")
         library_description_from_youtube = yt_data.get("playlist_description")
-
+        
         for t in tracks:
             if "safe_title" in t:
                 t["title"] = t["safe_title"]
@@ -392,20 +349,17 @@ def main():
     existing_report = load_report(link)
     append_mode = False
     existing_ids = set()
-
+    
     if existing_report:
         library_id = existing_report.get("library_id")
-
+    
         if library_id and not library_exists(library_id):
-            print(
-                "[DABHound] Previous DAB library no longer exists. Cleaning up old report..."
-            )
+            print("[DABHound] Previous DAB library no longer exists. Cleaning up old report...")
 
             # delete old report file(s)
             from dabhounds.core.report import delete_report
-
             delete_report(link)
-
+    
             # reset state - treat as new conversion
             existing_report = None
             tracks_to_process = tracks[:]
@@ -421,72 +375,53 @@ def main():
                     existing_ids.add(t["isrc"])
                 else:
                     existing_ids.add(f"{t['artist']} - {t['title']}")
-
+    
             tracks_to_process = []
             for t in tracks:
-                track_id = (
-                    t.get("spotify_id")
-                    or t.get("yt_id")
-                    or t.get("isrc")
-                    or f"{t['artist']} - {t['title']}"
-                )
+                track_id = t.get("spotify_id") or t.get("yt_id") or t.get("isrc") or f"{t['artist']} - {t['title']}"
                 if track_id not in existing_ids:
                     tracks_to_process.append(t)
-
+    
             skipped_count = len(tracks) - len(tracks_to_process)
             if skipped_count:
-                print(
-                    f"[DABHound] {skipped_count} tracks already present in report; processing {len(tracks_to_process)} new tracks."
-                )
+                print(f"[DABHound] {skipped_count} tracks already present in report; processing {len(tracks_to_process)} new tracks.")
             else:
-                print(
-                    "[DABHound] No previously-synced tracks found; processing all tracks."
-                )
-
+                print("[DABHound] No previously-synced tracks found; processing all tracks.")
+    
             append_mode = True
     else:
         tracks_to_process = tracks[:]
         print("[DABHound] No previously-synced tracks; processing all tracks.")
 
-    # === MATCHING TRACKS ===
-    matched_tracks = []
-    match_results = []
-    for idx, track in enumerate(tracks_to_process, start=1):
-        print(
-            f"\n[DABHound] Matching ({idx}/{len(tracks_to_process)}): {track.get('artist', '')} - {track.get('title', '')}"
-        )
-        result = match_track(track, match_mode, token, fuzzy_threshold)
-        match_results.append(result or {})
+    # === MATCHING TRACKS ===  
+    matched_tracks = []  
+    match_results = []  
+    for idx, track in enumerate(tracks_to_process, start=1):  
+        print(f"\n[DABHound] Matching ({idx}/{len(tracks_to_process)}): {track.get('artist','')} - {track.get('title','')}")  
+        result = match_track(track, match_mode, token, fuzzy_threshold)  
+        match_results.append(result or {})  
 
-        if result:
-            print(
-                f"[DABHound] Match found: {result.get('artist', '')} - {result.get('title', '')} (DAB ID: {result.get('id')})"
-            )
-            matched_tracks.append(
-                {
-                    "artist": result.get("artist", track.get("artist")),
-                    "title": result.get("title", track.get("title")),
-                    "isrc": track.get("isrc"),
-                    "match_status": "FOUND",
-                    "dab_track_id": result.get("id"),
-                    "source_url": track.get("source_url"),
-                    "full_track": result,  # <--- attach the full DAB track dict
-                }
-            )
-        else:
-            print(
-                f"[DABHound] No match found for: {track.get('artist', '')} - {track.get('title', '')}"
-            )
-            matched_tracks.append(
-                {
-                    "artist": track.get("artist"),
-                    "title": track.get("title"),
-                    "isrc": track.get("isrc"),
-                    "match_status": "NOT_FOUND",
-                    "dab_track_id": None,
-                    "source_url": track.get("source_url"),
-                }
-            )
+        if result:  
+            print(f"[DABHound] Match found: {result.get('artist','')} - {result.get('title','')} (DAB ID: {result.get('id')})")  
+            matched_tracks.append({  
+                "artist": result.get("artist", track.get("artist")),  
+                "title": result.get("title", track.get("title")),  
+                "isrc": track.get("isrc"),  
+                "match_status": "FOUND",  
+                "dab_track_id": result.get("id"),  
+                "source_url": track.get("source_url"),  
+                "full_track": result  # <--- attach the full DAB track dict  
+            })  
+        else:  
+            print(f"[DABHound] No match found for: {track.get('artist','')} - {track.get('title','')}")  
+            matched_tracks.append({  
+                "artist": track.get("artist"),  
+                "title": track.get("title"),  
+                "isrc": track.get("isrc"),  
+                "match_status": "NOT_FOUND",  
+                "dab_track_id": None,  
+                "source_url": track.get("source_url"),  
+            })
 
     # === LIBRARY CREATION / UPDATE ===
     library_id = "(none)"
@@ -495,40 +430,25 @@ def main():
     if matched_tracks:
         if append_mode and existing_report:
             library_id = existing_report.get("library_id", "(none)")
-            library_name = existing_report.get(
-                "library_name", f"DABHounds {datetime.now().strftime('%Y-%m-%d %H:%M')}"
-            )
+            library_name = existing_report.get("library_name", 
+                                           f"DABHounds {datetime.now().strftime('%Y-%m-%d %H:%M')}")
             print(f"[DABHound] Adding new tracks to existing library: {library_name}")
         else:
             # Use Spotify/YouTube name and description if available, else fallback
-            library_name = (
-                library_name_from_spotify
-                or library_name_from_youtube
-                or f"DABHounds {datetime.now().strftime('%Y-%m-%d %H:%M')}"
-            )
-            library_description = (
-                library_description_from_spotify
-                or library_description_from_youtube
-                or "Created by DABHounds"
-            )
+            library_name = library_name_from_spotify or library_name_from_youtube or f"DABHounds {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+            library_description = library_description_from_spotify or library_description_from_youtube or "Created by DABHounds"
             print(f"[DABHound] Creating new library: {library_name}")
-            library_id = create_library(
-                library_name, description=library_description, is_public=True
-            )
+            library_id = create_library(library_name, description=library_description, is_public=True)
             print(f"[DABHound] Library created. ID: {library_id}")
 
         if matched_tracks:
             add_tracks_to_library(library_id, matched_tracks)
-            print(
-                f"[DABHound] Library updated! Link: https://dabmusic.xyz/shared/library/{library_id}"
-            )
+            print(f"[DABHound] Library updated! Link: https://dabmusic.xyz/shared/library/{library_id}")
     else:
         if append_mode and existing_report:
             library_id = existing_report.get("library_id", "(none)")
             library_name = existing_report.get("library_name", "(none)")
-            print(
-                "[DABHound] No new matches found to append; using existing library info."
-            )
+            print("[DABHound] No new matches found to append; using existing library info.")
         else:
             print("[DABHound] No tracks matched; skipping library creation.")
 
@@ -539,7 +459,7 @@ def main():
             tracks_to_process,
             library_id=library_id,
             library_name=library_name,
-            matching_mode=match_mode,
+            matching_mode=match_mode
         )
     else:
         generate_report(
@@ -549,13 +469,10 @@ def main():
             match_mode,
             library_name,
             library_id,
-            source_url=link,
+            source_url=link
         )
 
-    print(
-        f"[DABHound] Conversion complete. Reports written for {len(matched_tracks)} tracks."
-    )
-
+    print(f"[DABHound] Conversion complete. Reports written for {len(matched_tracks)} tracks.")
 
 if __name__ == "__main__":
     main()
