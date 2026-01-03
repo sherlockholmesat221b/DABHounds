@@ -67,6 +67,7 @@ def add_tracks_to_library(library_id: str, tracks: List[dict]) -> None:
     session = get_authenticated_session()  
     min_interval = 10 / 15  # ~0.6667 seconds per request  
     last_request = 0  
+    request_timeout = 15  
   
     for track in tracks:  
         payload = {"track": transform_track_for_dab(track)}  
@@ -75,7 +76,7 @@ def add_tracks_to_library(library_id: str, tracks: List[dict]) -> None:
         if elapsed < min_interval:  
             time.sleep(min_interval - elapsed)  
   
-        response = session.post(f"{API_BASE}/libraries/{library_id}/tracks", json=payload)  
+        response = session.post(f"{API_BASE}/libraries/{library_id}/tracks", json=payload, timeout=request_timeout)  
         last_request = time.time()  
   
         if not response.ok:  

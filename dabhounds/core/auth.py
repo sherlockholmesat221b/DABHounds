@@ -3,6 +3,8 @@
 import requests  
 import json  
 from pathlib import Path  
+from requests.adapters import HTTPAdapter  
+from urllib3.util.retry import Retry  
   
 MASTER_CONFIG = {  
     "SPOTIPY_CLIENT_ID": "440ca0fe7cc54e91af9b50972e783552",  
@@ -160,6 +162,18 @@ def ensure_logged_in() -> str:
 def get_authenticated_session() -> requests.Session:  
     token = ensure_logged_in()  
     session = requests.Session()  
+    retry = Retry(  
+        total=3,  
+        connect=3,  
+        read=3,  
+        backoff_factor=0.5,  
+        status_forcelist=[429, 500, 502, 503, 504],  
+        allowed_methods=["GET", "POST", "PUT", "DELETE", "PATCH"],  
+        raise_on_status=False,  
+    )  
+    adapter = HTTPAdapter(max_retries=retry)  
+    session.mount("https://", adapter)  
+    session.mount("http://", adapter)  
     session.cookies.set("session", token)  
     session.headers.update({"User-Agent": USER_AGENT})  
     session.verify = False  
