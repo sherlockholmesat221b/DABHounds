@@ -116,6 +116,29 @@ def is_spotify_url(url: str) -> bool:
 def is_youtube_url(url: str) -> bool:
     return "youtube.com" in url or "youtu.be" in url
 
+def is_isrc_code(value: str) -> bool:
+    if len(value) != 12:
+        return False
+    return value[:2].isalpha() and value[:2].isupper() and value[2:].isalnum()
+
+def normalize_spotify_url(url: str) -> str:
+    # Strip common tracking parameters.
+    if "?si=" in url:
+        url = url.split("?si=")[0]
+    if "&si=" in url:
+        url = url.split("&si=")[0]
+    return url
+
+def load_links_from_file(path: Path) -> list:
+    links = []
+    with path.open("r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            links.append(line)
+    return links
+
 def logout():
     cfg = load_config()
     for key in ["DAB_AUTH_TOKEN", "DAB_EMAIL", "DAB_PASSWORD", "SPOTIFY_TOKEN"]:
@@ -129,7 +152,7 @@ def logout():
 
 def main():
     parser = argparse.ArgumentParser(description="DABHounds: Convert Spotify or YouTube to DAB libraries")
-    parser.add_argument("link", nargs="?", help="Spotify/YouTube/ISRC input")
+    parser.add_argument("link", nargs="?", help="Spotify/YouTube/ISRC input or text file with Spotify/YouTube/ISRC entries")
     parser.add_argument("--mode", choices=["strict","lenient","manual"], default=None)
     parser.add_argument("--version", action="store_true")
     parser.add_argument("--update", action="store_true")
@@ -138,6 +161,7 @@ def main():
     parser.add_argument("--spotify-login", action="store_true")
     parser.add_argument("--credits", action="store_true")
     parser.add_argument("--threshold", type=int, help="Override fuzzy threshold 0-100")
+    parser.add_argument("--library-name", help="Override DAB library name (useful for file input)")
     args = parser.parse_args()
 
     fuzzy_threshold = args.threshold or cfg.get("FUZZY_THRESHOLD", 80)
@@ -181,18 +205,18 @@ def main():
         sys.exit(1)
 
     # strip input URL and remove tracking parameters
-    link = args.link.strip()
-    
-    # Remove ?si= parameter from Spotify links
-    if "?si=" in link:
-        link = link.split("?si=")[0]
-    
-    # Remove &si= parameter from Spotify links
-    if "&si=" in link:
-        link = link.split("&si=")[0]
+    input_arg = args.link.strip()
+    file_input = None
+    if Path(input_arg).expanduser().is_file():
+        file_input = Path(input_arg).expanduser().resolve()
+        link = str(file_input)
+    else:
+        link = normalize_spotify_url(input_arg)
     
     print(f"[DABHound] Input URL: {link}")
     match_mode = args.mode or cfg.get("MATCH_MODE", "lenient")
+    if file_input and args.mode is None:
+        match_mode = "strict"
     token = ensure_logged_in()
 
     # === TRACK FETCHING ===
@@ -201,7 +225,76 @@ def main():
     library_name_from_youtube = None
     library_description_from_youtube = None
     tracks = []
-    if is_spotify_url(link):
+    if file_input:
+        print(f"[DABHound] Detected file input: {file_input}")
+        raw_links = load_links_from_file(file_input)
+        if not raw_links:
+            print("[DABHound] No links found in file.")
+            sys.exit(1)
+
+        normalized_links = [normalize_spotify_url(l) for l in raw_links]
+
+        try:
+            public_sp = Spotify(auth_manager=SpotifyClientCredentials(
+                client_id=cfg.get("SPOTIPY_CLIENT_ID"),
+                client_secret=cfg.get("SPOTIPY_CLIENT_SECRET")
+            ))
+            fetcher = SpotifyFetcher(public_sp)
+        except Exception:
+            fetcher = None
+
+        oauth_fetcher = None
+        for url in normalized_links:
+            if is_spotify_url(url):
+                try:
+                    if fetcher is None:
+                        raise RuntimeError("No public Spotify client")
+                    spotify_data = fetcher.extract_tracks(url)
+                except Exception:
+                    print("[DABHound] Private/restricted playlist. Logging in...")
+                    if oauth_fetcher is None:
+                        sp = get_spotify_client()
+                        oauth_fetcher = SpotifyFetcher(sp)
+                    spotify_data = oauth_fetcher.extract_tracks(url)
+
+                file_tracks = spotify_data.get("tracks", [])
+                for t in file_tracks:
+                    t["source_url"] = link
+                tracks.extend(file_tracks)
+                continue
+
+            if is_youtube_url(url):
+                parser_y = YouTubeParserV3(cfg.get("YOUTUBE", {}))
+                yt_data = parser_y.parse(url)
+
+                file_tracks = yt_data["tracks"]
+                for t in file_tracks:
+                    if "safe_title" in t:
+                        t["title"] = t["safe_title"]
+                    if "safe_artist" in t and t["safe_artist"]:
+                        t["artist"] = t["safe_artist"]
+                    if not t.get("artist") or "youtube" in t["artist"].lower():
+                        if " - " in t["title"]:
+                            parts = t["title"].split(" - ", 1)
+                            t["artist"], t["title"] = parts[0], parts[1]
+                    t["source_url"] = link
+                tracks.extend(file_tracks)
+                continue
+
+            if is_isrc_code(url):
+                tracks.append({
+                    "title": url,
+                    "artist": "",
+                    "isrc": url,
+                    "source_url": link,
+                })
+                continue
+
+            print(f"[DABHound] Skipping unsupported entry in file: {url}")
+
+        library_name_from_spotify = args.library_name or "DABmusic"
+        library_description_from_spotify = f"Created by DABHounds from {file_input.name}"
+    elif is_spotify_url(link):
         print("[DABHound] Detected Spotify link")
         try:
             public_sp = Spotify(auth_manager=SpotifyClientCredentials(
