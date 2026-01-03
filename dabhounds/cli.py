@@ -178,7 +178,7 @@ def main():
     parser.add_argument(
         "link",
         nargs="?",
-        help="Spotify/YouTube/ISRC input or text file with Spotify/YouTube/ISRC entries",
+        help="Spotify / YouTube / ISRC input, or a text file containing them",
     )
     parser.add_argument("--mode", choices=["strict", "lenient", "manual"], default=None)
     parser.add_argument("--version", action="store_true")
